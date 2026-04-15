@@ -48,7 +48,7 @@ export async function evaluateSpeaking(
     throw new Error("Gemini API Key is missing. Please provide one in settings.");
   }
 
-  const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1' });
+  const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
 
   const transcriptText = Object.entries(transcripts)
     .map(([id, text]) => `Question ${id}: ${text}`)
@@ -70,7 +70,7 @@ export async function evaluateSpeaking(
   }
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-1.5-flash-latest",
     contents: [{ parts }],
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
