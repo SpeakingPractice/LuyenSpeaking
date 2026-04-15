@@ -70,7 +70,7 @@ export async function evaluateSpeaking(
   }
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.0-flash-exp",
     contents: [{ parts }],
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
