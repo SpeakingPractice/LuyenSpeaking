@@ -90,6 +90,7 @@ export default function App() {
   const [prepTimer, setPrepTimer] = useState(60);
   const [userApiKey, setUserApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
   const [showSettings, setShowSettings] = useState(false);
+  const [isCheckingApi, setIsCheckingApi] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>(JSON.parse(localStorage.getItem('test_history') || '[]'));
   
   const [audioData, setAudioData] = useState<{ [id: string]: { data: string, mimeType: string } }>({});
@@ -316,6 +317,22 @@ export default function App() {
     setView('home');
     setSession(null);
     setEvaluation(null);
+    setAudioData({});
+  };
+
+  const checkApiKey = async () => {
+    if (!userApiKey) return;
+    setIsCheckingApi(true);
+    try {
+      // Simple call to check if key and model work
+      await evaluateSpeaking({ "test": "Hello" }, undefined, userApiKey);
+      alert("Kết nối thành công! API Key và Model hoạt động bình thường.");
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi kết nối: " + (err instanceof Error ? err.message : "Vui lòng kiểm tra lại API Key."));
+    } finally {
+      setIsCheckingApi(false);
+    }
   };
 
   const currentQuestion = session?.questions[session.currentQuestionIndex];
@@ -820,12 +837,22 @@ export default function App() {
                   </p>
                 </div>
 
-                <button 
-                  onClick={() => setShowSettings(false)}
-                  className="w-full py-4 bg-accent text-white font-bold rounded-xl hover:opacity-90 transition-all shadow-lg shadow-accent/20"
-                >
-                  Lưu cài đặt
-                </button>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={checkApiKey}
+                    disabled={isCheckingApi || !userApiKey}
+                    className="flex-1 py-4 bg-bg border border-border text-text-primary font-bold rounded-xl hover:bg-border transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isCheckingApi ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    Kiểm tra
+                  </button>
+                  <button 
+                    onClick={() => setShowSettings(false)}
+                    className="flex-[2] py-4 bg-accent text-white font-bold rounded-xl hover:opacity-90 transition-all shadow-lg shadow-accent/20"
+                  >
+                    Lưu cài đặt
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
