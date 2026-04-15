@@ -21,10 +21,12 @@ import {
   Home,
   Settings,
   X,
-  Key
+  Key,
+  History,
+  Trash2
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { TestPart, Question, TestSession, EvaluationResult } from './types';
+import { TestPart, Question, TestSession, EvaluationResult, HistoryItem } from './types';
 import { PART_1_TOPICS, PART_2_CUE_CARDS, PART_3_QUESTIONS } from './constants';
 import { evaluateSpeaking } from './services/geminiService';
 
@@ -88,6 +90,7 @@ export default function App() {
   const [prepTimer, setPrepTimer] = useState(60);
   const [userApiKey, setUserApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
   const [showSettings, setShowSettings] = useState(false);
+  const [history, setHistory] = useState<HistoryItem[]>(JSON.parse(localStorage.getItem('test_history') || '[]'));
   
   const [audioData, setAudioData] = useState<{ [id: string]: { data: string, mimeType: string } }>({});
   
@@ -289,6 +292,18 @@ export default function App() {
     try {
       const result = await evaluateSpeaking(session.transcripts, audioData, userApiKey);
       setEvaluation(result);
+      
+      // Save to history
+      const newHistoryItem: HistoryItem = {
+        id: Date.now().toString(),
+        date: new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        mode: session.mode,
+        overall: result.overall
+      };
+      const updatedHistory = [newHistoryItem, ...history].slice(0, 10); // Keep last 10
+      setHistory(updatedHistory);
+      localStorage.setItem('test_history', JSON.stringify(updatedHistory));
+      
       setView('result');
     } catch (err) {
       console.error(err);
@@ -410,6 +425,68 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {history.length > 0 && (
+                <div className="bg-card p-10 rounded-3xl border border-border space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-bold flex items-center gap-2">
+                      <History className="text-accent w-6 h-6" />
+                      Lịch sử luyện tập
+                    </h3>
+                    <button 
+                      onClick={() => {
+                        if (confirm('Bạn có chắc muốn xóa toàn bộ lịch sử?')) {
+                          setHistory([]);
+                          localStorage.removeItem('test_history');
+                        }
+                      }}
+                      className="text-xs font-bold text-red-500 hover:text-red-600 flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Xóa lịch sử
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="pb-4 text-xs font-bold text-text-secondary uppercase tracking-widest">Ngày thi</th>
+                          <th className="pb-4 text-xs font-bold text-text-secondary uppercase tracking-widest">Chế độ</th>
+                          <th className="pb-4 text-xs font-bold text-text-secondary uppercase tracking-widest">Overall</th>
+                          <th className="pb-4"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {history.map((item) => (
+                          <tr key={item.id} className="group">
+                            <td className="py-4 text-sm font-medium text-text-primary">{item.date}</td>
+                            <td className="py-4">
+                              <span className="px-3 py-1 bg-accent/5 text-accent text-xs font-bold rounded-full border border-accent/10">
+                                {item.mode}
+                              </span>
+                            </td>
+                            <td className="py-4">
+                              <span className="text-lg font-black text-success">{item.overall.toFixed(1)}</span>
+                            </td>
+                            <td className="py-4 text-right">
+                              <button 
+                                onClick={() => {
+                                  const updated = history.filter(h => h.id !== item.id);
+                                  setHistory(updated);
+                                  localStorage.setItem('test_history', JSON.stringify(updated));
+                                }}
+                                className="p-2 text-text-secondary hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
@@ -527,14 +604,14 @@ export default function App() {
                   {!isRecording ? (
                     <button 
                       onClick={startRecording}
-                      className="w-20 h-20 bg-accent rounded-full flex items-center justify-center text-white shadow-2xl shadow-accent/40 hover:scale-110 transition-transform active:scale-95 border-[6px] border-accent/20"
+                      className="w-20 h-20 bg-accent rounded-full flex items-center justify-center text-white shadow-xl shadow-accent/20 hover:scale-110 transition-transform active:scale-95 border-[6px] border-accent/10"
                     >
                       <Mic className="w-8 h-8" />
                     </button>
                   ) : (
                     <button 
                       onClick={stopRecording}
-                      className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-red-500/40 hover:scale-110 transition-transform active:scale-95 border-[6px] border-red-500/20"
+                      className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-red-500/20 hover:scale-110 transition-transform active:scale-95 border-[6px] border-red-500/10"
                     >
                       <Square className="w-8 h-8 fill-current" />
                     </button>
@@ -700,7 +777,7 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowSettings(false)}
-              className="absolute inset-0 bg-bg/80 backdrop-blur-sm"
+              className="absolute inset-0 bg-text-primary/20 backdrop-blur-sm"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}

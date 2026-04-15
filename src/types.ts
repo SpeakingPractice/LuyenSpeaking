@@ -41,3 +41,10 @@ export interface EvaluationResult {
     general: string;
   };
 }
+
+export interface HistoryItem {
+  id: string;
+  date: string;
+  mode: TestPart;
+  overall: number;
+}
