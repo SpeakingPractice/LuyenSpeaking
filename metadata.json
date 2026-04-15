@@ -1,0 +1,6 @@
+{
+  "name": "IELTS Speaking Master",
+  "description": "A comprehensive IELTS Speaking practice app with AI-powered evaluation based on official band descriptors, covering all 3 parts with recording and feedback.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["audio_recording", "ai_evaluation"]
+}

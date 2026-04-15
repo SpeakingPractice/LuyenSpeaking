@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0D0D0E;
+  --color-card: #1A1B1E;
+  --color-accent: #6366F1;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-text-primary: #F3F4F6;
+  --color-text-secondary: #9CA3AF;
+  --color-border: #2D2E32;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-text-primary font-sans;
+  }
+
+  .prose h1 { @apply text-2xl font-bold mb-4 text-text-primary; }
+  .prose h2 { @apply text-xl font-bold mb-3 text-text-primary; }
+  .prose h3 { @apply text-lg font-bold mb-2 text-text-primary; }
+  .prose p { @apply mb-4 leading-relaxed text-text-secondary; }
+  .prose ul { @apply list-disc pl-5 mb-4 text-text-secondary; }
+  .prose ol { @apply list-decimal pl-5 mb-4 text-text-secondary; }
+  .prose li { @apply mb-1; }
+  .prose strong { @apply font-bold text-warning; }
+  .prose em { @apply italic; }
+  .prose code { @apply bg-white/5 px-1 rounded font-mono text-accent; }
+}
