@@ -111,6 +111,59 @@ export default function App() {
     });
   };
 
+  const [isMicTesting, setIsMicTesting] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+
+  const testMicrophone = async () => {
+    if (isMicTesting) {
+      // Stop testing
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      setIsMicTesting(false);
+      setMicLevel(0);
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+      
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = audioContext;
+      
+      const analyser = audioContext.createAnalyser();
+      analyserRef.current = analyser;
+      analyser.fftSize = 256;
+      
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      setIsMicTesting(true);
+      
+      const updateLevel = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        setMicLevel(average);
+        if (micStreamRef.current?.active) {
+          requestAnimationFrame(updateLevel);
+        }
+      };
+      updateLevel();
+    } catch (err) {
+      console.error("Mic test error:", err);
+      alert("Không thể truy cập micro. Vui lòng kiểm tra quyền truy cập.");
+    }
+  };
+
   // Initialize Speech Recognition
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -121,16 +174,15 @@ export default function App() {
       recognitionRef.current.lang = 'en-US';
 
       recognitionRef.current.onresult = (event: any) => {
-        let interimTranscript = '';
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
+            finalTranscript += event.results[i][0].transcript + ' ';
           }
         }
-        setTranscript(prev => prev + finalTranscript);
+        if (finalTranscript) {
+          setTranscript(prev => prev + finalTranscript);
+        }
       };
     }
   }, []);
@@ -834,6 +886,34 @@ export default function App() {
                   />
                   <p className="text-[10px] text-text-secondary leading-relaxed">
                     API Key của bạn được lưu trữ cục bộ trên trình duyệt này và chỉ được dùng để gọi API chấm điểm. Bạn có thể lấy key miễn phí tại <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Google AI Studio</a>.
+                  </p>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-border">
+                  <label className="text-xs font-bold text-text-secondary uppercase tracking-widest flex items-center gap-2">
+                    <Mic className="w-3 h-3" />
+                    Kiểm tra Micro
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={testMicrophone}
+                      className={`px-4 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${isMicTesting ? 'bg-red-500 text-white' : 'bg-bg border border-border text-text-primary hover:bg-border'}`}
+                    >
+                      {isMicTesting ? <Square className="w-4 h-4 fill-current" /> : <Mic className="w-4 h-4" />}
+                      {isMicTesting ? 'Dừng thử' : 'Thử Micro'}
+                    </button>
+                    {isMicTesting && (
+                      <div className="flex-1 h-2 bg-bg rounded-full overflow-hidden border border-border">
+                        <motion.div 
+                          className="h-full bg-accent"
+                          animate={{ width: `${Math.min(100, (micLevel / 128) * 100)}%` }}
+                          transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-text-secondary leading-relaxed">
+                    Nếu bạn thấy thanh màu xanh nhảy khi nói, nghĩa là Micro đang hoạt động tốt. AI sẽ "nghe" và ghi âm lại lời nói của bạn để chấm điểm.
                   </p>
                 </div>
 

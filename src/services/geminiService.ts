@@ -55,7 +55,14 @@ export async function evaluateSpeaking(
     .join('\n\n');
 
   const parts: any[] = [
-    { text: `Evaluate the following IELTS Speaking performance.\n\nTranscripts:\n${transcriptText}\n\nPlease analyze the language used, the coherence, and the grammatical accuracy.` }
+    { text: `Evaluate the following IELTS Speaking performance.
+    
+Transcripts provided:
+${transcriptText || "No transcripts provided. Please use the attached audio files to transcribe and evaluate the candidate's speech."}
+
+If audio files are provided, prioritize the audio for evaluating Pronunciation (P) and Fluency (FC). If transcripts are missing or incomplete, transcribe the audio yourself before evaluating.
+
+Please analyze the language used, the coherence, and the grammatical accuracy based on IELTS standards.` }
   ];
 
   if (audioData) {
@@ -70,7 +77,7 @@ export async function evaluateSpeaking(
   }
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.0-flash-exp",
+    model: "gemini-1.5-flash",
     contents: [{ parts }],
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
