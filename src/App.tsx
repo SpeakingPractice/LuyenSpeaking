@@ -18,7 +18,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  Home
+  Home,
+  Settings,
+  X,
+  Key
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { TestPart, Question, TestSession, EvaluationResult } from './types';
@@ -83,6 +86,8 @@ export default function App() {
   const [transcript, setTranscript] = useState('');
   const [timer, setTimer] = useState(0);
   const [prepTimer, setPrepTimer] = useState(60);
+  const [userApiKey, setUserApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+  const [showSettings, setShowSettings] = useState(false);
   
   const [audioData, setAudioData] = useState<{ [id: string]: { data: string, mimeType: string } }>({});
   
@@ -275,15 +280,20 @@ export default function App() {
 
   const finishTest = async () => {
     if (!session) return;
+    if (!userApiKey) {
+      setShowSettings(true);
+      alert("Vui lòng nhập Gemini API Key trong phần cài đặt để tiếp tục chấm điểm.");
+      return;
+    }
     setView('evaluating');
     try {
-      const result = await evaluateSpeaking(session.transcripts, audioData);
+      const result = await evaluateSpeaking(session.transcripts, audioData, userApiKey);
       setEvaluation(result);
       setView('result');
     } catch (err) {
       console.error(err);
       setView('test');
-      alert("Evaluation failed. Please try again.");
+      alert(err instanceof Error ? err.message : "Evaluation failed. Please try again.");
     }
   };
 
@@ -318,6 +328,13 @@ export default function App() {
           )}
 
           <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setShowSettings(true)}
+              className="p-2 hover:bg-card rounded-full transition-colors text-text-secondary"
+              title="Cài đặt API Key"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
             {session && view !== 'home' && (
               <button 
                 onClick={resetToHome}
@@ -673,6 +690,70 @@ export default function App() {
           <p className="text-[10px] text-text-secondary font-medium">© 2026 IELTS Speaking Pro. All rights reserved.</p>
         </div>
       </footer>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettings && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSettings(false)}
+              className="absolute inset-0 bg-bg/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-md bg-card border border-border rounded-3xl p-8 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-accent" />
+                  Cài đặt API Key
+                </h3>
+                <button 
+                  onClick={() => setShowSettings(false)}
+                  className="p-2 hover:bg-bg rounded-full transition-colors text-text-secondary"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-text-secondary uppercase tracking-widest flex items-center gap-2">
+                    <Key className="w-3 h-3" />
+                    Gemini API Key
+                  </label>
+                  <input 
+                    type="password"
+                    value={userApiKey}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setUserApiKey(val);
+                      localStorage.setItem('gemini_api_key', val);
+                    }}
+                    placeholder="Nhập API Key của bạn..."
+                    className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:border-accent transition-colors"
+                  />
+                  <p className="text-[10px] text-text-secondary leading-relaxed">
+                    API Key của bạn được lưu trữ cục bộ trên trình duyệt này và chỉ được dùng để gọi API chấm điểm. Bạn có thể lấy key miễn phí tại <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">Google AI Studio</a>.
+                  </p>
+                </div>
+
+                <button 
+                  onClick={() => setShowSettings(false)}
+                  className="w-full py-4 bg-accent text-white font-bold rounded-xl hover:opacity-90 transition-all shadow-lg shadow-accent/20"
+                >
+                  Lưu cài đặt
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

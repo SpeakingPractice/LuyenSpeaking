@@ -1,8 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { EvaluationResult } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 const SYSTEM_INSTRUCTION = `
 You are an expert IELTS Speaking Examiner. Your task is to evaluate a candidate's speaking performance based on the official IELTS Speaking Band Descriptors.
 
@@ -42,8 +40,16 @@ You must return a JSON object matching this structure:
 
 export async function evaluateSpeaking(
   transcripts: { [id: string]: string },
-  audioData?: { [id: string]: { data: string, mimeType: string } } // base64 audio
+  audioData?: { [id: string]: { data: string, mimeType: string } }, // base64 audio
+  userApiKey?: string
 ): Promise<EvaluationResult> {
+  const apiKey = userApiKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API Key is missing. Please provide one in settings.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
   const transcriptText = Object.entries(transcripts)
     .map(([id, text]) => `Question ${id}: ${text}`)
     .join('\n\n');
