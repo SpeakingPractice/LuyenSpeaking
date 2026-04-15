@@ -270,6 +270,26 @@ export default function App() {
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
+      // Audio level visualization
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = audioContext;
+      const analyser = audioContext.createAnalyser();
+      analyserRef.current = analyser;
+      analyser.fftSize = 256;
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const updateLevel = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+        setMicLevel(average);
+        if (mediaRecorderRef.current?.state === 'recording') {
+          requestAnimationFrame(updateLevel);
+        }
+      };
+      
       mediaRecorder.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data);
       };
@@ -284,9 +304,14 @@ export default function App() {
             [currentQ.id]: { data: base64, mimeType: 'audio/webm' }
           }));
         }
+        if (audioContextRef.current) {
+          audioContextRef.current.close();
+        }
+        setMicLevel(0);
       };
 
       mediaRecorder.start();
+      updateLevel();
       setIsRecording(true);
       setTranscript('');
       setTimer(0);
@@ -655,12 +680,12 @@ export default function App() {
                 <div className="recorder-container flex flex-col items-center gap-6">
                   {isRecording && (
                     <div className="wave-container flex items-center gap-1 h-10">
-                      {[10, 24, 35, 20, 38, 15, 28, 32, 12, 22].map((h, i) => (
+                      {[0.4, 0.7, 1.0, 0.8, 1.2, 0.6, 0.9, 1.1, 0.5, 0.7].map((factor, i) => (
                         <motion.div 
                           key={i}
                           className="w-1 bg-accent rounded-full"
-                          animate={{ height: [h, h * 1.5, h * 0.5, h] }}
-                          transition={{ repeat: Infinity, duration: 1, delay: i * 0.1 }}
+                          animate={{ height: [10, Math.max(10, (micLevel / 128) * 40 * factor), 10] }}
+                          transition={{ type: 'spring', bounce: 0, duration: 0.1 }}
                         />
                       ))}
                     </div>

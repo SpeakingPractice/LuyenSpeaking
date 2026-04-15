@@ -48,7 +48,7 @@ export async function evaluateSpeaking(
     throw new Error("Gemini API Key is missing. Please provide one in settings.");
   }
 
-  const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
+  const ai = new GoogleGenAI({ apiKey });
 
   const transcriptText = Object.entries(transcripts)
     .map(([id, text]) => `Question ${id}: ${text}`)
@@ -77,8 +77,8 @@ Please analyze the language used, the coherence, and the grammatical accuracy ba
   }
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
-    contents: [{ parts }],
+    model: "gemini-3-flash-preview",
+    contents: { parts },
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
       responseMimeType: "application/json",
@@ -114,7 +114,8 @@ Please analyze the language used, the coherence, and the grammatical accuracy ba
   });
 
   try {
-    return JSON.parse(response.text || '{}') as EvaluationResult;
+    const text = response.text || '{}';
+    return JSON.parse(text) as EvaluationResult;
   } catch (e) {
     console.error("Failed to parse evaluation result", e);
     throw new Error("Evaluation failed. Please try again.");
