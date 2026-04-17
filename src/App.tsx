@@ -17,8 +17,10 @@ import {
   Save,
   X,
   Sparkles,
-  Wand2
+  Wand2,
+  Radio
 } from 'lucide-react';
+import { ContributionTracker } from './components/ContributionTracker';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import { TestPart, TestSession, EvaluationResult, Question, HistoryItem } from './types';
@@ -44,7 +46,6 @@ export default function App() {
   const [isRecording, setIsRecording] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [timer, setTimer] = useState(0);
-  const [prepTimer, setPrepTimer] = useState(60);
   const [micLevel, setMicLevel] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [userApiKey, setUserApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
@@ -57,6 +58,10 @@ export default function App() {
   const [customP3, setCustomP3] = useState<Record<string, any[]>>(() => JSON.parse(localStorage.getItem('custom_p3') || '{}'));
   const [isCheckingApi, setIsCheckingApi] = useState(false);
   const [audioData, setAudioData] = useState<Record<string, { data: string, mimeType: string }>>({});
+  const [speakingStats, setSpeakingStats] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('speaking_stats');
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -90,14 +95,44 @@ export default function App() {
     let interval: any;
     if (isRecording) {
       interval = setInterval(() => setTimer(t => t + 1), 1000);
-    } else if (view === 'prep' && prepTimer > 0) {
-      interval = setInterval(() => setPrepTimer(t => t - 1), 1000);
-    } else if (view === 'prep' && prepTimer === 0) {
-      startRecording();
-      setView('test');
     }
     return () => clearInterval(interval);
-  }, [isRecording, view, prepTimer]);
+  }, [isRecording]);
+
+  const incrementDailyStats = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setSpeakingStats(prev => {
+      const newVal = { ...prev, [today]: (prev[today] || 0) + 1 };
+      localStorage.setItem('speaking_stats', JSON.stringify(newVal));
+      return newVal;
+    });
+  };
+
+  const calculateStreak = () => {
+    const dates = Object.keys(speakingStats).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    if (dates.length === 0) return 0;
+
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let current = new Date(today);
+    const todayIso = current.toISOString().split('T')[0];
+    
+    // If not recorded today, check yesterday. If neither, streak is 0.
+    if (!speakingStats[todayIso]) {
+      current.setDate(current.getDate() - 1);
+      const yesterdayIso = current.toISOString().split('T')[0];
+      if (!speakingStats[yesterdayIso]) return 0;
+    }
+
+    // Now current points to the last day with a recording
+    while (speakingStats[current.toISOString().split('T')[0]]) {
+      streak++;
+      current.setDate(current.getDate() - 1);
+    }
+    return streak;
+  };
 
   const blobToBase64 = (blob: Blob): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -165,13 +200,7 @@ export default function App() {
     setAudioData({});
     setTranscript('');
     setTimer(0);
-    
-    if (questions[0].part === 2) {
-      setView('prep');
-      setPrepTimer(60);
-    } else {
-      setView('test');
-    }
+    setView('test');
   };
 
   const startRecording = async () => {
@@ -227,6 +256,7 @@ export default function App() {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      incrementDailyStats();
       if (recognitionRef.current) recognitionRef.current.stop();
       if (session) {
         const qId = session.questions[session.currentQuestionIndex].id;
@@ -243,10 +273,6 @@ export default function App() {
       setSession({ ...session, currentQuestionIndex: nextIndex, currentPart: nextQ.part });
       setTranscript('');
       setTimer(0);
-      if (nextQ.part === 2 && session.questions[session.currentQuestionIndex].part !== 2) {
-        setView('prep');
-        setPrepTimer(60);
-      }
     } else {
       finishTest();
     }
@@ -327,13 +353,18 @@ export default function App() {
         <AnimatePresence mode="wait">
           {view === 'home' && (
             <motion.div key="home" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-12">
-              <div className="space-y-4">
-                <h2 className="text-6xl font-black tracking-tight leading-tight">
-                  IELTS Speaking <br /> <span className="text-accent underline decoration-4 underline-offset-8">Adventure</span>
-                </h2>
-                <p className="text-xl text-text-secondary max-w-2xl">
-                  Chinh phục 12 ải speaking, luyện tập phát âm, ngắt nghỉ và phát triển ý tưởng cùng AI.
-                </p>
+              <div className="flex flex-col lg:flex-row justify-between items-start gap-12">
+                <div className="space-y-4">
+                  <h2 className="text-6xl font-black tracking-tight leading-tight">
+                    IELTS Speaking <br /> <span className="text-accent underline decoration-4 underline-offset-8">Adventure</span>
+                  </h2>
+                  <p className="text-xl text-text-secondary max-w-xl">
+                    Chinh phục 12 ải speaking, luyện tập phát âm, ngắt nghỉ và phát triển ý tưởng cùng AI.
+                  </p>
+                </div>
+                <div className="w-full lg:w-auto">
+                    <ContributionTracker stats={speakingStats} streak={calculateStreak()} />
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
@@ -366,33 +397,6 @@ export default function App() {
                   Xoá Custom Data
                 </button>
               </div>
-            </motion.div>
-          )}
-
-          {view === 'prep' && (
-            <motion.div key="prep" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center py-24 space-y-8">
-              <div className="text-center space-y-4">
-                <h2 className="text-4xl font-black italic">Thời gian chuẩn bị</h2>
-                <p className="text-text-secondary">Bạn có 1 phút để phác thảo ý tưởng cho Cue Card.</p>
-              </div>
-              <div className="w-48 h-48 rounded-full border-[12px] border-accent/10 flex items-center justify-center relative shadow-inner">
-                <div className="text-6xl font-black text-accent tabular-nums">{prepTimer}</div>
-                <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 192 192">
-                  <circle 
-                    cx="96" 
-                    cy="96" 
-                    r="84" 
-                    fill="transparent" 
-                    stroke="currentColor" 
-                    strokeWidth="12" 
-                    className="text-accent" 
-                    strokeDasharray="527" 
-                    strokeDashoffset={527 - (527 * prepTimer) / 60}
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-              <button onClick={() => setPrepTimer(0)} className="px-8 py-3 bg-card border border-border font-bold rounded-xl transition-all hover:bg-bg">Bắt đầu ngay</button>
             </motion.div>
           )}
 
