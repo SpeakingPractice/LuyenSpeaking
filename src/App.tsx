@@ -327,7 +327,7 @@ export default function App() {
     try {
       const result = await evaluateSpeaking({ [currentQ.id]: transcript }, { [currentQ.id]: audioData[currentQ.id] }, userApiKey);
       setLevelEvaluation(result);
-      if (result.pronunciationAccuracy >= 85) {
+      if (result.pronunciationAccuracy >= 80) {
         let pts = currentQ.part === 1 ? 2 : (currentQ.part === 2 ? 3 : 5);
         setTotalScore(prev => prev + pts);
       }
@@ -654,7 +654,7 @@ export default function App() {
                           <p className="text-lg text-text-primary italic leading-relaxed">"{transcript}"</p>
                           {session.mode === TestPart.QUEST ? (
                             <button onClick={evaluateLevel} disabled={isLevelLoading} className="w-full py-5 bg-text-primary text-bg font-black rounded-2xl flex items-center justify-center gap-3">
-                              {isLevelLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Award className="w-6 h-6" /> KIỂM TRA ĐỘ CHÍNH XÁC (TGT 85%)</>}
+                              {isLevelLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Award className="w-6 h-6" /> KIỂM TRA ĐỘ CHÍNH XÁC (TGT 80%)</>}
                             </button>
                           ) : (
                             <button onClick={nextQuestion} className="w-full py-5 bg-text-primary text-bg font-black rounded-2xl flex items-center justify-center gap-3">TIẾP TỤC <ChevronRight className="w-6 h-6" /></button>
@@ -665,15 +665,15 @@ export default function App() {
                   ) : (
                     <div className="w-full space-y-10 py-6">
                       <div className="flex flex-col items-center gap-4">
-                        <div className={`w-32 h-32 rounded-full border-[10px] flex items-center justify-center ${levelEvaluation.pronunciationAccuracy >= 85 ? 'border-success' : 'border-red-500'}`}>
-                          <span className={`text-5xl font-black ${levelEvaluation.pronunciationAccuracy >= 85 ? 'text-success' : 'text-red-500'}`}>{levelEvaluation.pronunciationAccuracy}%</span>
+                        <div className={`w-32 h-32 rounded-full border-[10px] flex items-center justify-center ${levelEvaluation.pronunciationAccuracy >= 80 ? 'border-success' : 'border-red-500'}`}>
+                          <span className={`text-5xl font-black ${levelEvaluation.pronunciationAccuracy >= 80 ? 'text-success' : 'text-red-500'}`}>{levelEvaluation.pronunciationAccuracy}%</span>
                         </div>
-                        <h4 className="text-2xl font-black uppercase tracking-tight">{levelEvaluation.pronunciationAccuracy >= 85 ? 'VƯỢT ẢI THÀNH CÔNG!' : 'CHƯA ĐẠT ĐỘ CHÍNH XÁC'}</h4>
-                        <p className="text-text-secondary">{levelEvaluation.pronunciationAccuracy >= 85 ? `Chúc mừng! Bạn đã nhận được +${currentQuestion.part === 1 ? '2' : currentQuestion.part === 2 ? '3' : '5'} PTS.` : 'Hãy thử lại để vượt qua ải này.'}</p>
+                        <h4 className="text-2xl font-black uppercase tracking-tight">{levelEvaluation.pronunciationAccuracy >= 80 ? 'VƯỢT ẢI THÀNH CÔNG!' : 'CHƯA ĐẠT ĐỘ CHÍNH XÁC'}</h4>
+                        <p className="text-text-secondary">{levelEvaluation.pronunciationAccuracy >= 80 ? `Chúc mừng! Bạn đã nhận được +${currentQuestion.part === 1 ? '2' : currentQuestion.part === 2 ? '3' : '5'} PTS.` : 'Hãy thử lại để vượt qua ải này.'}</p>
                       </div>
                       <div className="flex gap-4">
                         <button onClick={() => { setLevelEvaluation(null); setTranscript(''); setTimer(0); }} className="flex-1 py-5 bg-card border border-border text-text-primary font-black rounded-2xl flex items-center justify-center gap-3"><RotateCcw className="w-5 h-5" /> THỬ LẠI</button>
-                        {levelEvaluation.pronunciationAccuracy >= 85 && (
+                        {levelEvaluation.pronunciationAccuracy >= 80 && (
                           <button onClick={() => { setLevelEvaluation(null); nextQuestion(); }} className="flex-[2] py-5 bg-accent text-white font-black rounded-2xl flex items-center justify-center gap-3">ẢI TIẾP THEO <ChevronRight className="w-6 h-6" /></button>
                         )}
                       </div>
@@ -760,7 +760,7 @@ export default function App() {
                 {isLevelLoading ? (
                   <div className="flex flex-col items-center gap-6">
                     <Loader2 className="w-12 h-12 text-accent animate-spin" />
-                    <p className="text-lg font-bold text-text-secondary">Đang tạo câu mẫu phong cách IELTS...</p>
+                    <p className="text-lg font-bold text-text-secondary">Đang check nà, đợi tí nha</p>
                   </div>
                 ) : (
                   <div className="space-y-8 w-full max-w-2xl px-4">
@@ -795,7 +795,7 @@ export default function App() {
                               <p className="text-sm font-bold text-text-secondary uppercase mb-2">Bạn đã đọc:</p>
                               <p className="text-lg text-text-primary italic">"{transcript}"</p>
                               <button onClick={evaluatePronunciation} disabled={isLevelLoading} className="w-full mt-6 py-4 bg-text-primary text-bg font-black rounded-xl flex items-center justify-center gap-3">
-                                {isLevelLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Award className="w-5 h-5" /> KIỂM TRA ĐỘ CHÍNH XÁC (MỤC TIÊU 85%)</>}
+                                {isLevelLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Award className="w-5 h-5" /> KIỂM TRA ĐỘ CHÍNH XÁC (MỤC TIÊU 80%)</>}
                               </button>
                             </div>
                           )}
@@ -803,10 +803,10 @@ export default function App() {
                       ) : (
                         <div className="w-full space-y-6 text-center">
                           <div className="flex flex-col items-center gap-4">
-                            <div className={`w-24 h-24 rounded-full border-[8px] flex items-center justify-center ${levelEvaluation.pronunciationAccuracy >= 85 ? 'border-success' : 'border-red-500'}`}>
-                              <span className={`text-3xl font-black ${levelEvaluation.pronunciationAccuracy >= 85 ? 'text-success' : 'text-red-500'}`}>{levelEvaluation.pronunciationAccuracy}%</span>
+                            <div className={`w-24 h-24 rounded-full border-[8px] flex items-center justify-center ${levelEvaluation.pronunciationAccuracy >= 80 ? 'border-success' : 'border-red-500'}`}>
+                              <span className={`text-3xl font-black ${levelEvaluation.pronunciationAccuracy >= 80 ? 'text-success' : 'text-red-500'}`}>{levelEvaluation.pronunciationAccuracy}%</span>
                             </div>
-                            <h4 className="text-xl font-black uppercase">{levelEvaluation.pronunciationAccuracy >= 85 ? 'XUẤT SẮC!' : 'CỐ GẮNG HƠN NHÉ'}</h4>
+                            <h4 className="text-xl font-black uppercase">{levelEvaluation.pronunciationAccuracy >= 80 ? 'XUẤT SẮC!' : 'CỐ GẮNG HƠN NHÉ'}</h4>
                           </div>
                           <div className="flex gap-4">
                             <button onClick={() => { setLevelEvaluation(null); setTranscript(''); setTimer(0); }} className="flex-1 py-4 bg-card border border-border font-bold rounded-xl flex items-center justify-center gap-2 text-sm"><RotateCcw className="w-4 h-4" /> THỬ LẠI</button>

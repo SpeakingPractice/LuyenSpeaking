@@ -62,7 +62,7 @@ Transcripts provided:
 ${transcriptText || "No transcripts provided. Please use the attached audio files to transcribe and evaluate the candidate's speech."}
 
 If audio files are provided, prioritize the audio for evaluating Pronunciation (P), Fluency (FC), and emotional delivery. 
-Provide a "pronunciationAccuracy" score from 0-100, where 100 is native-like and 85+ is required to "pass" this level.
+Provide a "pronunciationAccuracy" score from 0-100, where 100 is native-like and 80+ is required to "pass" this level.
 
 Please analyze the language used, the coherence, and the grammatical accuracy based on IELTS standards (Targeting Band 6.5).` }
   ];
