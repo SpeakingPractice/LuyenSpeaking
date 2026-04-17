@@ -170,8 +170,11 @@ export default function App() {
     }
 
     if (mode === TestPart.PART_2 || mode === TestPart.QUEST) {
-      const cueCard = allP2Cards[Math.floor(Math.random() * allP2Cards.length)];
-      questions.push(cueCard);
+      const count = mode === TestPart.PART_2 ? 3 : 1; // More variety if just Part 2 mode
+      const shuffled = [...allP2Cards].sort(() => 0.5 - Math.random());
+      shuffled.slice(0, count).forEach(card => {
+        questions.push(card);
+      });
     }
 
     if (mode === TestPart.PART_3 || mode === TestPart.QUEST) {
@@ -276,6 +279,25 @@ export default function App() {
     } else {
       finishTest();
     }
+  };
+
+  const shuffleCurrentQuestion = () => {
+    if (!session) return;
+    const currentQ = session.questions[session.currentQuestionIndex];
+    if (currentQ.part !== 2) return;
+    
+    const allP2Cards = [...PART_2_CUE_CARDS, ...customP2];
+    let newCard = allP2Cards[Math.floor(Math.random() * allP2Cards.length)];
+    // Try to pick a different one
+    while (newCard.id === currentQ.id && allP2Cards.length > 1) {
+      newCard = allP2Cards[Math.floor(Math.random() * allP2Cards.length)];
+    }
+    
+    const newQuestions = [...session.questions];
+    newQuestions[session.currentQuestionIndex] = newCard;
+    setSession({ ...session, questions: newQuestions });
+    setTranscript('');
+    setTimer(0);
   };
 
   const evaluateLevel = async () => {
@@ -407,9 +429,20 @@ export default function App() {
                   <span className="text-accent font-bold uppercase tracking-[0.2em] text-xs">Part {currentQuestion.part}</span>
                   <h3 className="text-3xl font-black">{currentQuestion.part === 1 ? currentQuestion.topic : 'Speaking Task'}</h3>
                 </div>
-                <div className="text-right space-y-2">
-                  <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Câu hỏi {session.currentQuestionIndex + 1} / {session.questions.length}</p>
-                  <div className="w-40"><ProgressBar current={session.currentQuestionIndex + 1} total={session.questions.length} /></div>
+                <div className="flex items-center gap-6">
+                  {currentQuestion.part === 2 && !isRecording && (
+                    <button 
+                      onClick={shuffleCurrentQuestion}
+                      className="text-xs font-bold text-accent hover:opacity-80 flex items-center gap-2 px-4 py-2 bg-accent/10 rounded-full transition-all"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      ĐỔI CÂU HỎI KHÁC
+                    </button>
+                  )}
+                  <div className="text-right space-y-2">
+                    <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Câu hỏi {session.currentQuestionIndex + 1} / {session.questions.length}</p>
+                    <div className="w-40"><ProgressBar current={session.currentQuestionIndex + 1} total={session.questions.length} /></div>
+                  </div>
                 </div>
               </div>
 
@@ -417,24 +450,34 @@ export default function App() {
                 <div className="absolute top-0 left-0 w-1 h-full bg-accent" />
                 <div className="space-y-4">
                   {currentQuestion.topic && <span className="px-3 py-1 bg-accent/10 text-accent text-[10px] font-black rounded-full uppercase tracking-widest">Topic: {currentQuestion.topic}</span>}
-                  <motion.p key={currentQuestion.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`text-4xl font-bold text-text-primary leading-tight max-w-4xl`}>"{currentQuestion.text}"</motion.p>
+                  <motion.p key={currentQuestion.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`text-3xl md:text-5xl font-bold text-text-primary leading-tight max-w-4xl`}>"{currentQuestion.text}"</motion.p>
                 </div>
                 <div className="w-full max-w-3xl text-left space-y-6">
                   {currentQuestion.framework && (
                     <div className="p-6 bg-accent/5 rounded-2xl border border-accent/20">
-                      <div className="flex items-center gap-2 mb-2"><CheckCircle2 className="w-4 h-4 text-accent" /><span className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">Framework Gợi Ý</span></div>
-                      <p className="text-xs italic text-text-primary leading-relaxed whitespace-pre-line">{currentQuestion.framework}</p>
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckCircle2 className="w-4 h-4 text-accent" />
+                        <span className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">Framework Gợi Ý</span>
+                      </div>
+                      <div className="space-y-2">
+                        {currentQuestion.framework.replace(/\\n/g, '\n').split('\n').map((line, idx) => (
+                          line.trim() && <p key={idx} className="text-lg italic text-text-primary leading-relaxed text-left">{line.trim()}</p>
+                        ))}
+                      </div>
                     </div>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {currentQuestion.sampleAnswer && (
                       <div className="p-6 bg-white/5 rounded-2xl border border-border">
                         <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest block mb-3">Gợi Ý Trả Lời (Band 6.5)</span>
-                        <p className="text-sm text-text-primary leading-relaxed whitespace-pre-line">{currentQuestion.sampleAnswer}</p>
+                        <p className="text-lg text-text-primary leading-relaxed whitespace-pre-line text-left">{currentQuestion.sampleAnswer.replace(/\\n/g, '\n')}</p>
                       </div>
                     )}
                     {currentQuestion.tips && (
-                      <div className="p-6 bg-white/5 rounded-2xl border border-border"><span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest block mb-3">Luyện tập gì?</span><p className="text-sm text-text-primary italic leading-relaxed">{currentQuestion.tips}</p></div>
+                      <div className="p-6 bg-white/5 rounded-2xl border border-border">
+                        <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest block mb-3">Luyện tập gì?</span>
+                        <p className="text-lg text-text-primary italic leading-relaxed text-left">{currentQuestion.tips.replace(/\\n/g, '\n')}</p>
+                      </div>
                     )}
                   </div>
                 </div>

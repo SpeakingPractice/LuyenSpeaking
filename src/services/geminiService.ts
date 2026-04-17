@@ -148,11 +148,13 @@ export async function generateSpeakingContent(
      - Part 1: 3-4 sentences.
      - Part 2: Approximately 200-250 words.
      - Part 3: 4-6 sentences with structured reasoning.
-  6. FRAMEWORK (PART 2 ONLY): Provide a phác thảo (framework) with 4 key bullet points using the structure:
+  6. FRAMEWORK (PART 2 ONLY): Provide a phác thảo (framework) with 4 key bullet points. Each point MUST be on a new line. Use this exact structure:
      - Intro: (Direct answer)
      - Context/Background: (Where, When, Who, Why - include a short description of personality/appearance)
      - Main Story: (Past start -> Past climax -> Result then -> Current situation)
      - Conclusion: (Future wishes or final feeling)
+  7. TIPS: Use Vietnamese (tiếng Việt) to explain why the collocation or idiom is used. Use English ONLY when stating the key phrases themselves.
+  8. NO RAW ESCAPED CHARACTERS: Do not include literal "\\n" or stringified newline characters in the JSON values. Use actual line breaks.
   
   RESPONSE FORMAT:
   Return a JSON object:
