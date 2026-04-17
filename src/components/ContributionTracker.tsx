@@ -33,50 +33,53 @@ export const ContributionTracker: React.FC<ContributionTrackerProps> = ({ stats,
   };
 
   const heatmapData = generateHeatmapData();
-  const months = ['Dec', 'Jan', 'Feb', 'Mar', 'Apr']; // Simplified as per image
+  const months = ['Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
 
   const getColor = (count: number) => {
     if (count === 0) return 'bg-gray-100';
-    if (count <= 5) return 'bg-emerald-200';
-    if (count <= 10) return 'bg-emerald-600';
-    return 'bg-accent';
+    if (count <= 5) return 'bg-[#A7F3D0]'; // Light green (Emerald 200)
+    if (count <= 10) return 'bg-[#059669]'; // Dark green (Emerald 600)
+    return 'bg-accent'; // Purple (11+)
   };
 
+  const todayIso = new Date().toISOString().split('T')[0];
+  const todayCount = stats[todayIso] || 0;
+
   return (
-    <div className="flex flex-col gap-4 w-[450px]">
+    <div className="flex flex-col gap-4 w-full lg:w-[480px]">
       {/* Top Banner */}
-      <div className="bg-white border border-gray-100 rounded-[24px] p-6 flex items-center shadow-sm">
-        <div className="flex items-center gap-4 flex-1">
-          <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center">
-            <div className="w-6 h-6 bg-accent rounded-md" />
+      <div className="bg-white border border-gray-100 rounded-[32px] p-8 flex items-center shadow-sm">
+        <div className="flex items-center gap-6 flex-1">
+          <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center">
+            <div className="w-8 h-8 bg-accent rounded-lg" />
           </div>
           <div>
-            <div className="text-3xl font-black text-accent">{streak}</div>
-            <div className="text-xs font-bold text-text-secondary uppercase tracking-widest">Day streak</div>
+            <div className="text-[40px] font-black text-accent leading-none">{streak}</div>
+            <div className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em]">Day streak</div>
           </div>
         </div>
         
-        <div className="w-px h-12 bg-gray-100 mx-6" />
+        <div className="w-px h-16 bg-gray-100 mx-8" />
 
-        <div className="flex-[2] space-y-1">
+        <div className="flex-[2.5] space-y-2">
           <div className="flex items-center gap-2 text-accent">
             <Radio className="w-4 h-4" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Nhiệm vụ hôm nay</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.15em]">Nhiệm vụ hôm nay</span>
           </div>
-          <p className="text-lg font-bold text-text-primary leading-tight">
-            Ghi âm <span className="text-accent underline">25</span> câu trả lời nhé :)
+          <p className="text-xl font-bold text-text-primary leading-tight">
+            Ghi âm <span className="text-accent underline underline-offset-4 decoration-2">{Math.max(0, 25 - todayCount)}</span> câu trả lời nhé :)
           </p>
         </div>
       </div>
 
       {/* Heatmap Card */}
-      <div className="bg-white border border-gray-100 rounded-[24px] p-6 shadow-sm space-y-4">
-        <div className="flex justify-between pl-10 pr-4 text-[10px] font-bold text-text-secondary uppercase tracking-widest">
+      <div className="bg-white border border-gray-100 rounded-[32px] p-8 shadow-sm space-y-6">
+        <div className="flex justify-between pl-12 pr-6 text-[11px] font-bold text-text-secondary uppercase tracking-[0.15em]">
             {months.map(m => <span key={m}>{m}</span>)}
         </div>
         
-        <div className="flex gap-3">
-          <div className="flex flex-col justify-between py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest h-[110px]">
+        <div className="flex gap-4">
+          <div className="flex flex-col justify-between py-2 text-[11px] font-bold text-text-secondary uppercase tracking-widest h-[120px]">
             <span>Tue</span>
             <span>Thu</span>
             <span>Sat</span>
@@ -88,27 +91,27 @@ export const ContributionTracker: React.FC<ContributionTrackerProps> = ({ stats,
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: i * 0.001 }}
-                className={`w-3.5 h-3.5 rounded-sm ${getColor(day.count)} transition-colors`}
+                className={`w-4 h-4 rounded-sm ${getColor(day.count)} transition-colors`}
                 title={`${day.iso}: ${day.count} recordings`}
               />
             ))}
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2">
-            <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Đông</span>
-                <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+            <div className="flex items-center gap-3">
+                <span className="text-[11px] font-bold text-text-secondary uppercase tracking-widest">Đông</span>
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-cyan-50 rounded-lg">
                     <div className="w-4 h-4 bg-cyan-400 rounded-md" />
-                    <span className="text-[10px] font-bold text-text-secondary truncate">x 0</span>
+                    <span className="text-[11px] font-black text-cyan-600">x 0</span>
                 </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
                 <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mr-1">Ít</span>
-                <div className="w-2.5 h-2.5 bg-gray-100 rounded-sm" />
-                <div className="w-2.5 h-2.5 bg-emerald-200 rounded-sm" title="1-5 questions" />
-                <div className="w-2.5 h-2.5 bg-emerald-600 rounded-sm" title="6-10 questions" />
-                <div className="w-2.5 h-2.5 bg-accent rounded-sm" title="11+ questions" />
+                <div className="w-3 h-3 bg-gray-100 rounded-[2px]" />
+                <div className="w-3 h-3 bg-[#A7F3D0] rounded-[2px]" title="1-5 sentences" />
+                <div className="w-3 h-3 bg-[#059669] rounded-[2px]" title="6-10 sentences" />
+                <div className="w-3 h-3 bg-accent rounded-[2px]" title="11+ sentences" />
                 <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest ml-1">Nhiều</span>
             </div>
         </div>

@@ -695,10 +695,10 @@ export default function App() {
                   <div className="flex items-center justify-between"><h2 className="text-3xl font-black">Phân tích chi tiết</h2><button onClick={resetToHome} className="px-5 py-2.5 bg-white/5 border border-border text-text-primary font-bold rounded-xl flex items-center gap-2 text-sm"><RotateCcw className="w-4 h-4" /> Reset</button></div>
                   <div className="space-y-10">
                     {[
-                      { label: 'Fluency & Coherence', content: evaluation.feedback.fc, score: evaluation.scores.fc },
-                      { label: 'Lexical Resource', content: evaluation.feedback.lr, score: evaluation.scores.lr },
-                      { label: 'Grammar Accuracy', content: evaluation.feedback.gra, score: evaluation.scores.gra },
-                      { label: 'Pronunciation', content: evaluation.feedback.p, score: evaluation.scores.p },
+                      { label: 'Trôi chảy & Mạch lạc', content: evaluation.feedback.fc, score: evaluation.scores.fc },
+                      { label: 'Vốn từ vựng', content: evaluation.feedback.lr, score: evaluation.scores.lr },
+                      { label: 'Ngữ pháp chính xác', content: evaluation.feedback.gra, score: evaluation.scores.gra },
+                      { label: 'Phát âm', content: evaluation.feedback.p, score: evaluation.scores.p },
                     ].map((item, i) => (
                       <div key={i} className="space-y-4 text-left">
                         <div className="flex items-center justify-between"><h4 className="font-bold text-accent uppercase text-xs tracking-[0.2em]">{item.label}</h4><span className="text-success font-bold">Band {item.score}</span></div>
