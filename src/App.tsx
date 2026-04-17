@@ -180,7 +180,7 @@ export default function App() {
     }
 
     if (mode === TestPart.PART_2 || mode === TestPart.QUEST) {
-      const count = mode === TestPart.PART_2 ? 3 : 1; // More variety if just Part 2 mode
+      const count = 1; // Always only one topic for Part 2 as requested
       const shuffled = [...allP2Cards].sort(() => 0.5 - Math.random());
       shuffled.slice(0, count).forEach(card => {
         questions.push(card);
@@ -295,25 +295,6 @@ export default function App() {
     } else {
       finishTest();
     }
-  };
-
-  const shuffleCurrentQuestion = () => {
-    if (!session) return;
-    const currentQ = session.questions[session.currentQuestionIndex];
-    if (currentQ.part !== 2) return;
-    
-    const allP2Cards = [...PART_2_CUE_CARDS, ...customP2];
-    let newCard = allP2Cards[Math.floor(Math.random() * allP2Cards.length)];
-    // Try to pick a different one
-    while (newCard.id === currentQ.id && allP2Cards.length > 1) {
-      newCard = allP2Cards[Math.floor(Math.random() * allP2Cards.length)];
-    }
-    
-    const newQuestions = [...session.questions];
-    newQuestions[session.currentQuestionIndex] = newCard;
-    setSession({ ...session, questions: newQuestions });
-    setTranscript('');
-    setTimer(0);
   };
 
   const evaluateLevel = async () => {
@@ -532,15 +513,6 @@ export default function App() {
                   <h3 className="text-3xl font-black">{currentQuestion.part === 1 ? currentQuestion.topic : 'Speaking Task'}</h3>
                 </div>
                 <div className="flex items-center gap-6">
-                  {currentQuestion.part === 2 && !isRecording && (
-                    <button 
-                      onClick={shuffleCurrentQuestion}
-                      className="text-xs font-bold text-accent hover:opacity-80 flex items-center gap-2 px-4 py-2 bg-accent/10 rounded-full transition-all"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      ĐỔI CÂU HỎI KHÁC
-                    </button>
-                  )}
                   <div className="text-right space-y-2">
                     <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Câu hỏi {session.currentQuestionIndex + 1} / {session.questions.length}</p>
                     <div className="w-40"><ProgressBar current={session.currentQuestionIndex + 1} total={session.questions.length} /></div>

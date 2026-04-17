@@ -144,18 +144,20 @@ export async function generateSpeakingContent(
   2. COLLOCATIONS: Prioritize thematic collocations (e.g., instead of "good coffee", use "a rich aroma" or "a strong caffeine kick").
   3. IDIOMS: Use 1-2 natural idioms per answer (e.g., "to be honest", "once in a blue moon", "up in the air"). Avoid cliches or outdated idioms.
   4. TONE: Warm, natural, and conversational. Like a native speaker chatting with a friend.
-  5. LENGTH: 
+  5. FILLERS: Use natural fillers occasionally to create thinking time and natural flow. Examples: "Well, let me think...", "That’s an interesting question", "Honestly, I’ve never thought about that before, but...", "Let me see...", "I mean...", "What I'm trying to say is...", "You know...", "Actually...", "Basically...".
+  6. CONTRACTIONS: ALWAYS use contractions (e.g., "I'm", "I'll", "I'd like", "don't", "can't") as this is a speaking test and should sound natural.
+  7. LENGTH: 
      - Part 1: 3-4 sentences.
      - Part 2: Approximately 200-250 words.
      - Part 3: 4-6 sentences with structured reasoning.
-  6. FRAMEWORK (PART 2 ONLY): Provide a phác thảo (framework) with 4 key bullet points. Each point MUST be on a new line. Use this exact structure:
+  8. FRAMEWORK (PART 2 ONLY): Provide a phác thảo (framework) with 4 key bullet points. Each point MUST be on a new line. Use this exact structure:
      - Intro: (Direct answer)
      - Context/Background: (Where, When, Who, Why - include a short description of personality/appearance)
      - Main Story: (Past start -> Past climax -> Result then -> Current situation)
      - Conclusion: (Future wishes or final feeling)
-  7. HIGHLIGHTING: Wrap all high-quality collocations and natural idioms in the sampleAnswer with double square brackets like this: [[phrase]].
-  8. TIPS: Use Vietnamese (tiếng Việt) to explain tại sao dùng cụm từ đó. Use English ONLY when stating the key phrases themselves.
-  9. NO RAW ESCAPED CHARACTERS: Do not include literal "\\n" or stringified newline characters in the JSON values. Use actual line breaks.
+  9. HIGHLIGHTING: Wrap all high-quality collocations and natural idioms in the sampleAnswer with double square brackets like this: [[phrase]].
+  10. TIPS: Use Vietnamese (tiếng Việt) to explain tại sao dùng cụm từ đó. Use English ONLY when stating the key phrases themselves.
+  11. NO RAW ESCAPED CHARACTERS: Do not include literal "\\n" or stringified newline characters in the JSON values. Use actual line breaks.
   
   RESPONSE FORMAT:
   Return a JSON object:
