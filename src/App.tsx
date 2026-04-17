@@ -9,22 +9,26 @@ import {
   CheckCircle2, 
   Loader2, 
   ChevronRight, 
+  ChevronDown,
   History, 
   Home, 
   BookOpen,
+  BookMarked,
   Trash2,
   PlusCircle,
   Save,
   X,
   Sparkles,
   Wand2,
-  Radio
+  Radio,
+  Quote,
+  Languages
 } from 'lucide-react';
 import { ContributionTracker } from './components/ContributionTracker';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import { TestPart, TestSession, EvaluationResult, Question, HistoryItem } from './types';
-import { evaluateSpeaking, generateSpeakingContent } from './services/geminiService';
+import { evaluateSpeaking, generateSpeakingContent, generatePronunciationSentence } from './services/geminiService';
 import { PART_1_TOPICS, PART_2_CUE_CARDS, PART_3_QUESTIONS } from './constants';
 
 const ProgressBar = ({ current, total }: { current: number, total: number }) => (
@@ -37,7 +41,7 @@ const ProgressBar = ({ current, total }: { current: number, total: number }) => 
 );
 
 export default function App() {
-  const [view, setView] = useState<'home' | 'test' | 'prep' | 'evaluating' | 'result' | 'add_question'>('home');
+  const [view, setView] = useState<'home' | 'test' | 'prep' | 'evaluating' | 'result' | 'add_question' | 'pronunciation'>('home');
   const [session, setSession] = useState<TestSession | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
   const [levelEvaluation, setLevelEvaluation] = useState<EvaluationResult | null>(null);
@@ -48,6 +52,7 @@ export default function App() {
   const [timer, setTimer] = useState(0);
   const [micLevel, setMicLevel] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [showVocab, setShowVocab] = useState(false);
   const [userApiKey, setUserApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
   const [history, setHistory] = useState<HistoryItem[]>(() => {
     const saved = localStorage.getItem('test_history');
@@ -56,8 +61,13 @@ export default function App() {
   const [customP1, setCustomP1] = useState<{ name: string, questions: any[] }[]>(() => JSON.parse(localStorage.getItem('custom_p1') || '[]'));
   const [customP2, setCustomP2] = useState<Question[]>(() => JSON.parse(localStorage.getItem('custom_p2') || '[]'));
   const [customP3, setCustomP3] = useState<Record<string, any[]>>(() => JSON.parse(localStorage.getItem('custom_p3') || '{}'));
+  const [myVocabulary, setMyVocabulary] = useState<string[]>(() => JSON.parse(localStorage.getItem('my_vocabulary') || '[]'));
+  const [currentPronunciationVocab, setCurrentPronunciationVocab] = useState<string | null>(null);
+  const [currentPronunciationSentence, setCurrentPronunciationSentence] = useState<string | null>(null);
   const [isCheckingApi, setIsCheckingApi] = useState(false);
   const [audioData, setAudioData] = useState<Record<string, { data: string, mimeType: string }>>({});
+  const [isSampleExpanded, setIsSampleExpanded] = useState(false);
+  const [isTipsExpanded, setIsTipsExpanded] = useState(false);
   const [speakingStats, setSpeakingStats] = useState<Record<string, number>>(() => {
     const saved = localStorage.getItem('speaking_stats');
     return saved ? JSON.parse(saved) : {};
@@ -204,6 +214,8 @@ export default function App() {
     setTranscript('');
     setTimer(0);
     setView('test');
+    setIsSampleExpanded(false);
+    setIsTipsExpanded(false);
   };
 
   const startRecording = async () => {
@@ -239,6 +251,8 @@ export default function App() {
         if (session) {
           const currentQ = session.questions[session.currentQuestionIndex];
           setAudioData(prev => ({ ...prev, [currentQ.id]: { data: base64, mimeType: 'audio/webm' } }));
+        } else if (view === 'pronunciation') {
+          setAudioData(prev => ({ ...prev, "p": { data: base64, mimeType: 'audio/webm' } }));
         }
         if (audioContextRef.current) audioContextRef.current.close();
         setMicLevel(0);
@@ -276,6 +290,8 @@ export default function App() {
       setSession({ ...session, currentQuestionIndex: nextIndex, currentPart: nextQ.part });
       setTranscript('');
       setTimer(0);
+      setIsSampleExpanded(false);
+      setIsTipsExpanded(false);
     } else {
       finishTest();
     }
@@ -322,6 +338,29 @@ export default function App() {
     }
   };
 
+  const evaluatePronunciation = async () => {
+    if (!userApiKey || isLevelLoading || !currentPronunciationVocab || !currentPronunciationSentence) return;
+    if (!transcript) {
+      alert("Vui lòng ghi âm trước.");
+      return;
+    }
+    
+    // We need some audio data. The current currentPronunciationSentence is evaluated.
+    // However, the audioData is keyed by question id. 
+    // For pronunciation practice, we can use a fixed key.
+    const audio = audioData["p"]; 
+    
+    setIsLevelLoading(true);
+    try {
+      const result = await evaluateSpeaking({ "p": transcript }, audio ? { "p": audio } : undefined, userApiKey);
+      setLevelEvaluation(result);
+    } catch (err) {
+      alert("Lỗi khi đánh giá phát âm.");
+    } finally {
+      setIsLevelLoading(false);
+    }
+  };
+
   const finishTest = async () => {
     if (!session || !userApiKey) { setShowSettings(true); return; }
     setView('evaluating');
@@ -341,6 +380,63 @@ export default function App() {
 
   const resetToHome = () => { setView('home'); setSession(null); setEvaluation(null); setAudioData({}); };
 
+  const toggleVocab = (vocab: string) => {
+    const updated = myVocabulary.includes(vocab)
+      ? myVocabulary.filter(v => v !== vocab)
+      : [...myVocabulary, vocab];
+    setMyVocabulary(updated);
+    localStorage.setItem('my_vocabulary', JSON.stringify(updated));
+  };
+
+  const startPronunciationPractice = async (vocab: string) => {
+    if (!userApiKey) {
+      alert("Vui lòng nhập API Key trong phần Cài đặt.");
+      return;
+    }
+    setView('pronunciation');
+    setCurrentPronunciationVocab(vocab);
+    setIsLevelLoading(true);
+    try {
+      const sentence = await generatePronunciationSentence(vocab, userApiKey);
+      setCurrentPronunciationSentence(sentence);
+    } catch (err) {
+      alert("Lỗi khi tạo câu mẫu.");
+      setView('home');
+    } finally {
+      setIsLevelLoading(false);
+    }
+  };
+
+  const HighlightedText = ({ text }: { text: string }) => {
+    // Regex to match [[phrase]]
+    const parts = text.split(/(\[\[.*?\]\])/g);
+    return (
+      <>
+        {parts.map((part, i) => {
+          if (part.startsWith('[[') && part.endsWith(']]')) {
+            const vocab = part.slice(2, -2);
+            const isSaved = myVocabulary.includes(vocab);
+            return (
+              <span 
+                key={i} 
+                className={`inline-block relative group cursor-pointer border-b-2 border-orange-300/40 hover:border-orange-400/80 transition-all px-0.5 rounded-sm`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleVocab(vocab);
+                }}
+                title={isSaved ? "Bấm để xóa khỏi thư viện" : "Bấm để lưu vào My Vocabulary"}
+              >
+                {vocab}
+                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${isSaved ? 'bg-orange-400' : 'bg-transparent'} transition-colors`} />
+              </span>
+            );
+          }
+          return part;
+        })}
+      </>
+    );
+  };
+
   const currentQuestion = session?.questions[session.currentQuestionIndex];
 
   return (
@@ -359,6 +455,12 @@ export default function App() {
                 <span className="text-sm font-bold text-accent">{totalScore} PTS</span>
               </div>
             )}
+            <button onClick={() => setShowVocab(true)} className="p-2 hover:bg-card rounded-full transition-colors text-text-secondary relative">
+              <BookMarked className="w-5 h-5" />
+              {myVocabulary.length > 0 && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full border-2 border-bg" />
+              )}
+            </button>
             <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-card rounded-full transition-colors text-text-secondary">
               <Settings className="w-5 h-5" />
             </button>
@@ -461,22 +563,64 @@ export default function App() {
                       </div>
                       <div className="space-y-2">
                         {currentQuestion.framework.replace(/\\n/g, '\n').split('\n').map((line, idx) => (
-                          line.trim() && <p key={idx} className="text-lg italic text-text-primary leading-relaxed text-left">{line.trim()}</p>
+                          line.trim() && <p key={idx} className="text-sm italic text-text-primary/80 leading-relaxed text-left">{line.trim()}</p>
                         ))}
                       </div>
                     </div>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                     {currentQuestion.sampleAnswer && (
-                      <div className="p-6 bg-white/5 rounded-2xl border border-border">
-                        <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest block mb-3">Gợi Ý Trả Lời (Band 6.5)</span>
-                        <p className="text-lg text-text-primary leading-relaxed whitespace-pre-line text-left">{currentQuestion.sampleAnswer.replace(/\\n/g, '\n')}</p>
+                      <div className="rounded-2xl border border-border overflow-hidden bg-white/5">
+                        <button 
+                          onClick={() => setIsSampleExpanded(!isSampleExpanded)}
+                          className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                        >
+                          <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Gợi Ý Trả Lời (Band 6.5)</span>
+                          <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform duration-300 ${isSampleExpanded ? 'rotate-180' : ''}`} />
+                        </button>
+                        <AnimatePresence>
+                          {isSampleExpanded && (
+                            <motion.div 
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: 'easeInOut' }}
+                            >
+                              <div className="px-6 pb-6 border-t border-border mt-2 pt-4">
+                                <p className="text-base md:text-lg text-text-primary leading-relaxed whitespace-pre-line text-left">
+                                  <HighlightedText text={currentQuestion.sampleAnswer.replace(/\\n/g, '\n')} />
+                                </p>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )}
                     {currentQuestion.tips && (
-                      <div className="p-6 bg-white/5 rounded-2xl border border-border">
-                        <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest block mb-3">Luyện tập gì?</span>
-                        <p className="text-lg text-text-primary italic leading-relaxed text-left">{currentQuestion.tips.replace(/\\n/g, '\n')}</p>
+                      <div className="rounded-2xl border border-border overflow-hidden bg-white/5">
+                        <button 
+                          onClick={() => setIsTipsExpanded(!isTipsExpanded)}
+                          className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                        >
+                          <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Luyện tập gì?</span>
+                          <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform duration-300 ${isTipsExpanded ? 'rotate-180' : ''}`} />
+                        </button>
+                        <AnimatePresence>
+                          {isTipsExpanded && (
+                            <motion.div 
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3, ease: 'easeInOut' }}
+                            >
+                              <div className="px-6 pb-6 border-t border-border mt-2 pt-4">
+                                <p className="text-base text-text-primary italic leading-relaxed text-left">
+                                  {currentQuestion.tips.replace(/\\n/g, '\n')}
+                                </p>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )}
                   </div>
@@ -598,6 +742,84 @@ export default function App() {
               </div>
             </motion.div>
           )}
+
+          {view === 'pronunciation' && (
+            <motion.div key="pronunciation" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-4xl mx-auto space-y-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-accent font-bold uppercase tracking-[0.2em] text-xs">Luyện Phát Âm & Ngữ Điệu</span>
+                  <h3 className="text-3xl font-black">"{currentPronunciationVocab}"</h3>
+                </div>
+                <button onClick={resetToHome} className="text-xs font-bold text-text-secondary hover:text-text-primary px-4 py-2 bg-card rounded-full border border-border transition-all flex items-center gap-2">
+                  <X className="w-4 h-4" /> QUAY LẠI
+                </button>
+              </div>
+
+              <div className="bg-card p-16 rounded-[40px] border border-border min-h-[350px] flex flex-col items-center justify-center text-center space-y-10 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-accent" />
+                {isLevelLoading ? (
+                  <div className="flex flex-col items-center gap-6">
+                    <Loader2 className="w-12 h-12 text-accent animate-spin" />
+                    <p className="text-lg font-bold text-text-secondary">Đang tạo câu mẫu phong cách IELTS...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-8 w-full max-w-2xl px-4">
+                    <div className="flex justify-center mb-4">
+                      <Quote className="w-10 h-10 text-accent/20" />
+                    </div>
+                    <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-3xl md:text-4xl font-bold text-text-primary leading-tight">
+                      "{currentPronunciationSentence}"
+                    </motion.p>
+                    
+                    <div className="recorder-container flex flex-col items-center gap-8 bg-bg/50 p-10 rounded-[32px] border border-border w-full">
+                      {!levelEvaluation ? (
+                        <>
+                          {isRecording && (
+                            <div className="wave-container flex items-center gap-1.5 h-12">
+                              {[0.4, 0.7, 1.0, 0.8, 1.2, 0.6, 0.9, 1.1, 0.5, 0.7, 0.8, 1.0].map((v, i) => (
+                                <motion.div key={i} className="w-1.5 bg-accent rounded-full" animate={{ height: [12, Math.max(12, (micLevel / 128) * 60 * v), 12] }} transition={{ duration: 0.1 }} />
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex flex-col items-center gap-4">
+                            {!isRecording ? (
+                              <button onClick={startRecording} className="w-20 h-20 bg-accent rounded-full flex items-center justify-center text-white shadow-xl shadow-accent/40 hover:scale-110 transition-transform active:scale-95 border-[6px] border-accent/20"><Mic className="w-8 h-8" /></button>
+                            ) : (
+                              <button onClick={stopRecording} className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-red-500/40 hover:scale-110 transition-transform active:scale-95 border-[6px] border-red-500/20"><Square className="w-8 h-8 fill-current" /></button>
+                            )}
+                            <p className="text-xs font-bold tracking-widest uppercase text-text-secondary">{isRecording ? "Đang ghi âm..." : "Bấm để bắt đầu đọc"}</p>
+                          </div>
+
+                          {transcript && !isRecording && (
+                            <div className="w-full bg-card p-6 rounded-2xl border border-border text-left">
+                              <p className="text-sm font-bold text-text-secondary uppercase mb-2">Bạn đã đọc:</p>
+                              <p className="text-lg text-text-primary italic">"{transcript}"</p>
+                              <button onClick={evaluatePronunciation} disabled={isLevelLoading} className="w-full mt-6 py-4 bg-text-primary text-bg font-black rounded-xl flex items-center justify-center gap-3">
+                                {isLevelLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Award className="w-5 h-5" /> KIỂM TRA ĐỘ CHÍNH XÁC (MỤC TIÊU 85%)</>}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="w-full space-y-6 text-center">
+                          <div className="flex flex-col items-center gap-4">
+                            <div className={`w-24 h-24 rounded-full border-[8px] flex items-center justify-center ${levelEvaluation.pronunciationAccuracy >= 85 ? 'border-success' : 'border-red-500'}`}>
+                              <span className={`text-3xl font-black ${levelEvaluation.pronunciationAccuracy >= 85 ? 'text-success' : 'text-red-500'}`}>{levelEvaluation.pronunciationAccuracy}%</span>
+                            </div>
+                            <h4 className="text-xl font-black uppercase">{levelEvaluation.pronunciationAccuracy >= 85 ? 'XUẤT SẮC!' : 'CỐ GẮNG HƠN NHÉ'}</h4>
+                          </div>
+                          <div className="flex gap-4">
+                            <button onClick={() => { setLevelEvaluation(null); setTranscript(''); setTimer(0); }} className="flex-1 py-4 bg-card border border-border font-bold rounded-xl flex items-center justify-center gap-2 text-sm"><RotateCcw className="w-4 h-4" /> THỬ LẠI</button>
+                            <button onClick={() => startPronunciationPractice(currentPronunciationVocab!)} className="flex-[2] py-4 bg-accent text-white font-bold rounded-xl flex items-center justify-center gap-2 text-sm">CÂU KHÁC <ChevronRight className="w-4 h-4" /></button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
@@ -609,6 +831,72 @@ export default function App() {
               <div className="space-y-2"><p className="text-xs font-bold uppercase tracking-widest">Gemini API Key</p><input type="password" value={userApiKey} onChange={(e) => { setUserApiKey(e.target.value); localStorage.setItem('gemini_api_key', e.target.value); }} className="w-full bg-bg border border-border px-4 py-3 rounded-xl focus:border-accent outline-none" placeholder="Nhập API Key của bạn..." /></div>
             </div>
             <button onClick={() => setShowSettings(false)} className="w-full py-4 bg-accent text-white font-black rounded-xl hover:opacity-90 transition-all">Lưu thay đổi</button>
+          </motion.div>
+        </div>
+      )}
+
+      {showVocab && (
+        <div className="fixed inset-0 bg-bg/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border w-full max-w-2xl h-[80vh] flex flex-col rounded-[32px] overflow-hidden shadow-2xl">
+            <div className="p-8 border-b border-border flex items-center justify-between bg-card/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-400/10 rounded-xl">
+                  <BookMarked className="w-6 h-6 text-orange-400" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black">My Vocabulary</h3>
+                  <p className="text-xs font-bold text-text-secondary uppercase tracking-widest">{myVocabulary.length} phrases saved</p>
+                </div>
+              </div>
+              <button onClick={() => setShowVocab(false)} className="w-10 h-10 flex items-center justify-center hover:bg-white/5 rounded-full transition-colors font-bold text-xl">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-8 space-y-4 scrollbar-hide">
+              {myVocabulary.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center opacity-40 space-y-4">
+                  <Languages className="w-16 h-16" />
+                  <p className="text-lg font-bold">Thư viện đang trống.<br/>Hãy underline cụm từ hay trong bài mẫu để lưu!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {myVocabulary.map((vocab, i) => (
+                    <motion.div 
+                      key={vocab}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="group p-4 bg-bg border border-border rounded-2xl hover:border-accent transition-all flex items-center justify-between"
+                    >
+                      <div className="flex-1 min-w-0 mr-4">
+                        <p className="text-lg font-bold text-text-primary truncate">{vocab}</p>
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => startPronunciationPractice(vocab)}
+                          className="p-2 bg-accent/10 text-accent rounded-lg hover:bg-accent hover:text-white transition-all shadow-sm"
+                          title="Luyện Phát Âm"
+                        >
+                          <Mic className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => toggleVocab(vocab)}
+                          className="p-2 bg-red-400/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                          title="Xóa"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="p-8 bg-black/20 border-t border-white/5 text-center">
+              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">💡 Tip: Nhấn vào icon Mic để luyện phát âm cho cụm từ tương ứng</p>
+            </div>
           </motion.div>
         </div>
       )}

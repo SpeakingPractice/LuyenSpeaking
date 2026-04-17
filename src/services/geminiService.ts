@@ -153,8 +153,9 @@ export async function generateSpeakingContent(
      - Context/Background: (Where, When, Who, Why - include a short description of personality/appearance)
      - Main Story: (Past start -> Past climax -> Result then -> Current situation)
      - Conclusion: (Future wishes or final feeling)
-  7. TIPS: Use Vietnamese (tiếng Việt) to explain why the collocation or idiom is used. Use English ONLY when stating the key phrases themselves.
-  8. NO RAW ESCAPED CHARACTERS: Do not include literal "\\n" or stringified newline characters in the JSON values. Use actual line breaks.
+  7. HIGHLIGHTING: Wrap all high-quality collocations and natural idioms in the sampleAnswer with double square brackets like this: [[phrase]].
+  8. TIPS: Use Vietnamese (tiếng Việt) to explain tại sao dùng cụm từ đó. Use English ONLY when stating the key phrases themselves.
+  9. NO RAW ESCAPED CHARACTERS: Do not include literal "\\n" or stringified newline characters in the JSON values. Use actual line breaks.
   
   RESPONSE FORMAT:
   Return a JSON object:
@@ -186,4 +187,32 @@ export async function generateSpeakingContent(
   });
 
   return JSON.parse(response.text || '{}');
+}
+
+export async function generatePronunciationSentence(
+  vocab: string,
+  userApiKey?: string
+): Promise<string> {
+  const apiKey = userApiKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini API Key missing");
+
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const instruction = `
+  You are an expert IELTS Speaking coach.
+  Generate ONE natural, conversational sentence using the vocabulary/idiom provided: "${vocab}".
+  The sentence should sound like it belongs in an IELTS Speaking interview.
+  Crucially, ensure each time you are asked for the same vocab, you provide a DIFFERENT sentence.
+  Return ONLY the sentence text, no explanations.
+  `;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: { parts: [{ text: `Generate a sentence for: ${vocab}` }] },
+    config: {
+      systemInstruction: instruction
+    }
+  });
+
+  return response.text.trim();
 }
