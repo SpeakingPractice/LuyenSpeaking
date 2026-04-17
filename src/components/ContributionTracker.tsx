@@ -67,7 +67,7 @@ export const ContributionTracker: React.FC<ContributionTrackerProps> = ({ stats,
             <span className="text-[11px] font-black uppercase tracking-[0.15em]">Nhiệm vụ hôm nay</span>
           </div>
           <p className="text-xl font-bold text-text-primary leading-tight">
-            Ghi âm <span className="text-accent underline underline-offset-4 decoration-2">{Math.max(0, 25 - todayCount)}</span> câu trả lời nhé :)
+            Nói được <span className="text-accent underline underline-offset-4 decoration-2">{todayCount}</span> câu rồi, Hang in there!
           </p>
         </div>
       </div>
