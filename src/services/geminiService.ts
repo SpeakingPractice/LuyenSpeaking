@@ -27,6 +27,7 @@ RESPONSE FORMAT:
 You must return a JSON object matching this structure:
 {
   "scores": { "fc": number, "lr": number, "gra": number, "p": number },
+  "pronunciationAccuracy": number, (0-100 integer representing clarity and accent accuracy)
   "overall": number,
   "feedback": {
     "fc": "string (markdown)",
@@ -55,14 +56,15 @@ export async function evaluateSpeaking(
     .join('\n\n');
 
   const parts: any[] = [
-    { text: `Evaluate the following IELTS Speaking performance.
+    { text: `Evaluate the following IELTS Speaking performance. Focus specifically on pronunciation accuracy, stress, intonation, and emotional expression.
     
 Transcripts provided:
 ${transcriptText || "No transcripts provided. Please use the attached audio files to transcribe and evaluate the candidate's speech."}
 
-If audio files are provided, prioritize the audio for evaluating Pronunciation (P) and Fluency (FC). If transcripts are missing or incomplete, transcribe the audio yourself before evaluating.
+If audio files are provided, prioritize the audio for evaluating Pronunciation (P), Fluency (FC), and emotional delivery. 
+Provide a "pronunciationAccuracy" score from 0-100, where 100 is native-like and 85+ is required to "pass" this level.
 
-Please analyze the language used, the coherence, and the grammatical accuracy based on IELTS standards.` }
+Please analyze the language used, the coherence, and the grammatical accuracy based on IELTS standards (Targeting Band 6.5).` }
   ];
 
   if (audioData) {
@@ -95,6 +97,7 @@ Please analyze the language used, the coherence, and the grammatical accuracy ba
             },
             required: ["fc", "lr", "gra", "p"]
           },
+          pronunciationAccuracy: { type: Type.INTEGER },
           overall: { type: Type.NUMBER },
           feedback: {
             type: Type.OBJECT,
@@ -108,7 +111,7 @@ Please analyze the language used, the coherence, and the grammatical accuracy ba
             required: ["fc", "lr", "gra", "p", "general"]
           }
         },
-        required: ["scores", "overall", "feedback"]
+        required: ["scores", "pronunciationAccuracy", "overall", "feedback"]
       }
     }
   });
@@ -120,4 +123,65 @@ Please analyze the language used, the coherence, and the grammatical accuracy ba
     console.error("Failed to parse evaluation result", e);
     throw new Error("Evaluation failed. Please try again.");
   }
+}
+
+export async function generateSpeakingContent(
+  part: 1 | 2 | 3,
+  input: string, // topic or question
+  userApiKey?: string
+): Promise<{ sampleAnswer: string; framework?: string; tips?: string }> {
+  const apiKey = userApiKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("Gemini API Key missing");
+
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const instruction = `
+  You are an expert IELTS Speaking coach specializing in natural communication.
+  Your goal is to generate sample answers for IELTS Speaking Part ${part}.
+  
+  STRICT STYLE RULES:
+  1. VOCABULARY: Use clear, effective, and common words. Avoid overly "academic" or obscure words.
+  2. COLLOCATIONS: Prioritize thematic collocations (e.g., instead of "good coffee", use "a rich aroma" or "a strong caffeine kick").
+  3. IDIOMS: Use 1-2 natural idioms per answer (e.g., "to be honest", "once in a blue moon", "up in the air"). Avoid cliches or outdated idioms.
+  4. TONE: Warm, natural, and conversational. Like a native speaker chatting with a friend.
+  5. LENGTH: 
+     - Part 1: 3-4 sentences.
+     - Part 2: Approximately 200-250 words.
+     - Part 3: 4-6 sentences with structured reasoning.
+  6. FRAMEWORK (PART 2 ONLY): Provide a phác thảo (framework) with 4 key bullet points using the structure:
+     - Intro: (Direct answer)
+     - Context/Background: (Where, When, Who, Why - include a short description of personality/appearance)
+     - Main Story: (Past start -> Past climax -> Result then -> Current situation)
+     - Conclusion: (Future wishes or final feeling)
+  
+  RESPONSE FORMAT:
+  Return a JSON object:
+  {
+    "sampleAnswer": "string (markdown)",
+    "framework": "string (markdown, optional)",
+    "tips": "string (markdown, optional - short tip on a specific collocation or idiom used)"
+  }
+  `;
+
+  const prompt = `Generate a sample answer for this IELTS Speaking Part ${part} content: "${input}"`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: { parts: [{ text: prompt }] },
+    config: {
+      systemInstruction: instruction,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          sampleAnswer: { type: Type.STRING },
+          framework: { type: Type.STRING },
+          tips: { type: Type.STRING }
+        },
+        required: ["sampleAnswer"]
+      }
+    }
+  });
+
+  return JSON.parse(response.text || '{}');
 }

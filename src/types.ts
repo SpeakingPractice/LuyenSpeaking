@@ -2,7 +2,7 @@ export enum TestPart {
   PART_1 = 'Part 1',
   PART_2 = 'Part 2',
   PART_3 = 'Part 3',
-  FULL_TEST = 'Full Test'
+  QUEST = 'Quest Mode'
 }
 
 export interface Question {
@@ -10,6 +10,9 @@ export interface Question {
   text: string;
   part: 1 | 2 | 3;
   topic?: string;
+  sampleAnswer?: string;
+  tips?: string;
+  framework?: string;
 }
 
 export interface Part2CueCard extends Question {
@@ -32,6 +35,7 @@ export interface EvaluationResult {
     gra: number; // Grammatical Range and Accuracy
     p: number; // Pronunciation
   };
+  pronunciationAccuracy: number; // 0-100
   overall: number;
   feedback: {
     fc: string;
