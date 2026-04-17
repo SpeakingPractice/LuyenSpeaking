@@ -37,11 +37,9 @@ export const ContributionTracker: React.FC<ContributionTrackerProps> = ({ stats,
 
   const getColor = (count: number) => {
     if (count === 0) return 'bg-gray-100';
-    if (count < 5) return 'bg-emerald-200';
-    if (count < 10) return 'bg-emerald-300';
-    if (count < 15) return 'bg-emerald-500';
-    if (count < 20) return 'bg-emerald-600';
-    return 'bg-accent'; // Purple for high activity
+    if (count <= 5) return 'bg-emerald-200';
+    if (count <= 10) return 'bg-emerald-600';
+    return 'bg-accent';
   };
 
   return (
@@ -108,11 +106,9 @@ export const ContributionTracker: React.FC<ContributionTrackerProps> = ({ stats,
             <div className="flex items-center gap-1.5">
                 <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mr-1">Ít</span>
                 <div className="w-2.5 h-2.5 bg-gray-100 rounded-sm" />
-                <div className="w-2.5 h-2.5 bg-emerald-200 rounded-sm" />
-                <div className="w-2.5 h-2.5 bg-emerald-300 rounded-sm" />
-                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-sm" />
-                <div className="w-2.5 h-2.5 bg-emerald-600 rounded-sm" />
-                <div className="w-2.5 h-2.5 bg-accent rounded-sm" />
+                <div className="w-2.5 h-2.5 bg-emerald-200 rounded-sm" title="1-5 questions" />
+                <div className="w-2.5 h-2.5 bg-emerald-600 rounded-sm" title="6-10 questions" />
+                <div className="w-2.5 h-2.5 bg-accent rounded-sm" title="11+ questions" />
                 <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest ml-1">Nhiều</span>
             </div>
         </div>
