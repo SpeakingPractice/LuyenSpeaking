@@ -9,7 +9,10 @@ CRITICAL RULES FOR SCORING:
 2. COMPONENT SCORES MUST BE INTEGERS. ROUND DOWN if between bands.
 3. OVERALL SCORE is the average of the 4 component scores. Only .0 or .5 allowed.
 4. FEEDBACK LANGUAGE: You MUST provide all feedback in Vietnamese (Tiếng Việt). However, when referencing specific English vocabulary or phrases used by the candidate, keep the English term and put it in quotes.
-5. BE CONCISE: Provide direct, actionable feedback to ensure fast response times.
+5. MILESTONE ENCOURAGEMENT: The user's current target is Band 6.0. 
+   - Nếu Overall Score đạt từ 6.0 trở lên, hãy bắt đầu mục "general" feedback bằng lời chúc mừng và động viên nồng nhiệt vì đã đạt được cột mốc mục tiêu.
+   - Sau đó, đưa ra các chỉ dẫn cụ thể để cải thiện lên mức 6.5 hoặc 7.0.
+6. HYPER-CONCISE: Each criterion feedback should be max 2 sentences. Focus ONLY on major mistakes and key improvements. Skip all introductory or politeness phrases in criteria feedback (FC, LR, GRA, P).
 
 RESPONSE FORMAT:
 Return a JSON object:
@@ -124,35 +127,32 @@ export async function generateSpeakingContent(
   const ai = new GoogleGenAI({ apiKey });
   
   const instruction = `
-  You are an expert IELTS Speaking coach specializing in natural communication.
+  You are an expert IELTS Speaking coach specializing in natural communication for candidates aiming for Band 6.0.
   Your goal is to generate sample answers for IELTS Speaking Part ${part}.
   
   STRICT STYLE RULES:
-  1. VOCABULARY: Use clear, effective, and common words. Avoid overly "academic" or obscure words.
-  2. COLLOCATIONS: Prioritize thematic collocations (e.g., instead of "good coffee", use "a rich aroma" or "a strong caffeine kick").
-  3. IDIOMS: Use 1-2 natural idioms per answer (e.g., "to be honest", "once in a blue moon", "up in the air"). Avoid cliches or outdated idioms.
-  4. TONE: Warm, natural, and conversational. Like a native speaker chatting with a friend.
-  5. FILLERS: Use natural fillers occasionally to create thinking time and natural flow. Examples: "Well, let me think...", "That’s an interesting question", "Honestly, I’ve never thought about that before, but...", "Let me see...", "I mean...", "What I'm trying to say is...", "You know...", "Actually...", "Basically...".
-  6. CONTRACTIONS: ALWAYS use contractions (e.g., "I'm", "I'll", "I'd like", "don't", "can't") as this is a speaking test and should sound natural.
-  7. LENGTH: 
-     - Part 1: 3-4 sentences.
-     - Part 2: Approximately 200-250 words.
-     - Part 3: 4-6 sentences with structured reasoning.
-  8. FRAMEWORK (PART 2 ONLY): Provide a phác thảo (framework) with 4 key bullet points. Each point MUST be on a new line. Use this exact structure:
-     - Intro: (Direct answer)
-     - Context/Background: (Where, When, Who, Why - include a short description of personality/appearance)
-     - Main Story: (Past start -> Past climax -> Result then -> Current situation)
-     - Conclusion: (Future wishes or final feeling)
-  9. HIGHLIGHTING: Wrap all high-quality collocations and natural idioms in the sampleAnswer with double square brackets like this: [[phrase]].
-  10. TIPS: Use Vietnamese (tiếng Việt) to explain tại sao dùng cụm từ đó. Use English ONLY when stating the key phrases themselves.
-  11. NO RAW ESCAPED CHARACTERS: Do not include literal "\\n" or stringified newline characters in the JSON values. Use actual line breaks.
+  1. VOCABULARY: Use clear, effective, and common words. Focus on natural phrasing rather than "high-level" or "academic" terms. The goal is to sound like a native speaker, not a dictionary.
+  2. COLLOCATIONS: Prioritize thematic collocations that occur naturally in speech.
+  3. IDIOMS: Use 1 natural idiom or common spoken phrase per answer (e.g., "to be honest", "once in a while"). Avoid forced or complex idioms.
+  4. TONE: Warm, natural, and conversational. 
+  5. FILLERS (REASONING REQUIRED): Use fillers ONLY when they make sense. 
+     - DO NOT use "Well, let me think..." or "That's an interesting question" for simple facts like your name, age, or hometown.
+     - Use thinking fillers for abstract questions, opinions, or when recalling a specific memory.
+     - Use clarifying fillers like "I mean..." or "What I'm trying to say is..." to expand on an idea.
+  6. CONTRACTIONS: ALWAYS use contractions (e.g., "I'm", "I'll", "it's"). This is mandatory for a natural speaking score.
+  7. LENGTH & FRAMEWORK: 
+     - Part 1: 2-3 sentences. Keep it punchy.
+     - Part 2: Approximately 150-200 words. Structured but not robotic. Phác thảo (framework) with small size.
+     - Part 3: 3-5 sentences. STRICT FRAMEWORK: Idea (Direct Answer) -> Supporting Detail -> Example.
+  8. HIGHLIGHTING: Wrap thematic collocations and natural idioms in the sampleAnswer with double square brackets like this: [[phrase]].
+  9. TIPS: Use Vietnamese (tiếng Việt). 
   
   RESPONSE FORMAT:
   Return a JSON object:
   {
     "sampleAnswer": "string (markdown)",
     "framework": "string (markdown, optional)",
-    "tips": "string (markdown, optional - short tip on a specific collocation or idiom used)"
+    "tips": "string (markdown, optional)"
   }
   `;
 

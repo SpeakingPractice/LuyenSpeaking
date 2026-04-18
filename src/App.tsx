@@ -41,7 +41,7 @@ const ProgressBar = ({ current, total }: { current: number, total: number }) => 
 );
 
 export default function App() {
-  const [view, setView] = useState<'home' | 'test' | 'prep' | 'evaluating' | 'result' | 'add_question' | 'pronunciation'>('home');
+  const [view, setView] = useState<'home' | 'test' | 'prep' | 'evaluating' | 'result' | 'add_question' | 'pronunciation' | 'topic_selection'>('home');
   const [session, setSession] = useState<TestSession | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
   const [levelEvaluation, setLevelEvaluation] = useState<EvaluationResult | null>(null);
@@ -68,6 +68,10 @@ export default function App() {
   const [audioData, setAudioData] = useState<Record<string, { data: string, mimeType: string }>>({});
   const [isSampleExpanded, setIsSampleExpanded] = useState(false);
   const [isTipsExpanded, setIsTipsExpanded] = useState(false);
+  const [p3UsageStats, setP3UsageStats] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('p3_usage_stats');
+    return saved ? JSON.parse(saved) : {};
+  });
   const [speakingStats, setSpeakingStats] = useState<Record<string, number>>(() => {
     const saved = localStorage.getItem('speaking_stats');
     return saved ? JSON.parse(saved) : {};
@@ -156,7 +160,7 @@ export default function App() {
     });
   };
 
-  const startTest = (mode: TestPart) => {
+  const startTest = (mode: TestPart, topicName?: string) => {
     let questions: Question[] = [];
     setTotalScore(0);
     setLevelEvaluation(null);
@@ -170,9 +174,18 @@ export default function App() {
     });
 
     if (mode === TestPart.PART_1 || mode === TestPart.QUEST) {
-      const selectedTopics = [...allP1Topics].sort(() => 0.5 - Math.random()).slice(0, 3);
-      selectedTopics.forEach((topic, tidx) => {
-        const qs = [...topic.questions].sort(() => 0.5 - Math.random()).slice(0, 2);
+      let topicsToUse = [];
+      if (mode === TestPart.PART_1 && topicName) {
+        const selected = allP1Topics.find(t => t.name === topicName);
+        if (selected) topicsToUse = [selected];
+        else topicsToUse = allP1Topics.slice(0, 1);
+      } else {
+        topicsToUse = [...allP1Topics].sort(() => 0.5 - Math.random()).slice(0, mode === TestPart.QUEST ? 1 : 3);
+      }
+
+      topicsToUse.forEach((topic, tidx) => {
+        // Use all questions if single topic selection, otherwise slice
+        const qs = mode === TestPart.PART_1 ? [...topic.questions] : [...topic.questions].sort(() => 0.5 - Math.random()).slice(0, 2);
         qs.forEach((q, i) => {
           questions.push({ ...q, id: `p1_${topic.name}_${tidx}_${i}`, part: 1, topic: topic.name });
         });
@@ -192,12 +205,27 @@ export default function App() {
         ? (questions.find(q => q.part === 2)?.id || 'p2_1')
         : allP2Cards[Math.floor(Math.random() * allP2Cards.length)].id;
         
-      const p3Qs = allP3Data[p2Id] || allP3Data['p2_1'];
-      // Limit to 5 questions for Part 3 in Quest Mode
-      const limit = mode === TestPart.QUEST ? 5 : p3Qs.length;
-      p3Qs.slice(0, limit).forEach((q, i) => {
-        questions.push({ ...q, id: `p3_${i}`, part: 3 });
-      });
+      const allPossibleP3 = allP3Data[p2Id] || allP3Data['p2_1'];
+      
+      // Shuffle and prioritize less used questions (usage < 2)
+      const shuffledP3 = [...allPossibleP3].sort(() => 0.5 - Math.random());
+      const filteredP3 = shuffledP3.filter(q => (p3UsageStats[q.id || ''] || 0) < 2);
+      
+      const finalP3Selection = filteredP3.length >= 3 
+        ? filteredP3 
+        : shuffledP3.sort((a,b) => (p3UsageStats[a.id || ''] || 0) - (p3UsageStats[b.id || ''] || 0));
+
+      const limit = mode === TestPart.QUEST ? 3 : finalP3Selection.length;
+      if (mode === TestPart.PART_3) {
+        // Limit Part 3 alone to 3 as well
+        finalP3Selection.slice(0, 3).forEach((q, i) => {
+          questions.push({ ...q, id: q.id || `p3_${i}`, part: 3 });
+        });
+      } else {
+        finalP3Selection.slice(0, limit).forEach((q, i) => {
+          questions.push({ ...q, id: q.id || `p3_${i}`, part: 3 });
+        });
+      }
     }
 
     setSession({
@@ -345,6 +373,17 @@ export default function App() {
   const finishTest = async () => {
     if (!session || !userApiKey) { setShowSettings(true); return; }
     setView('evaluating');
+    
+    // Update P3 usage stats
+    const updatedP3Stats = { ...p3UsageStats };
+    session.questions.forEach(q => {
+      if (q.part === 3 && q.id) {
+        updatedP3Stats[q.id] = (updatedP3Stats[q.id] || 0) + 1;
+      }
+    });
+    setP3UsageStats(updatedP3Stats);
+    localStorage.setItem('p3_usage_stats', JSON.stringify(updatedP3Stats));
+
     try {
       const result = await evaluateSpeaking(session.transcripts, audioData, userApiKey);
       setEvaluation(result);
@@ -474,11 +513,11 @@ export default function App() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
                   { id: TestPart.QUEST, label: 'BẮT ĐẦU QUEST', color: 'bg-accent text-white border-accent shadow-xl shadow-accent/20', desc: 'Chinh phục 12 ải', icon: Award },
-                  { id: TestPart.PART_1, label: 'Luyện Part 1', color: 'bg-card border-border hover:border-accent', desc: 'Luyện ý tưởng ngắn', icon: BookOpen },
+                  { id: TestPart.PART_1, label: 'Luyện Part 1', color: 'bg-card border-border hover:border-accent', desc: 'Chọn chủ đề', icon: BookOpen },
                   { id: TestPart.PART_2, label: 'Luyện Part 2', color: 'bg-card border-border hover:border-accent', desc: 'Luyện kể chuyện', icon: Mic },
                   { id: TestPart.PART_3, label: 'Luyện Part 3', color: 'bg-card border-border hover:border-accent', desc: 'Luyện tư duy sâu', icon: ChevronRight },
                 ].map((mode) => (
-                  <button key={mode.id} onClick={() => startTest(mode.id)} className={`${mode.color} p-8 rounded-[32px] border transition-all active:scale-95 text-left group flex flex-col justify-between h-full min-h-[180px]`}>
+                  <button key={mode.id} onClick={() => mode.id === TestPart.PART_1 ? setView('topic_selection') : startTest(mode.id)} className={`${mode.color} p-8 rounded-[32px] border transition-all active:scale-95 text-left group flex flex-col justify-between h-full min-h-[180px]`}>
                     <div className="flex items-center justify-between w-full">
                        <mode.icon className="w-8 h-8 opacity-40 group-hover:opacity-100 transition-opacity" />
                        <ChevronRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
@@ -501,6 +540,27 @@ export default function App() {
                   <Trash2 className="w-4 h-4" />
                   Xoá Custom Data
                 </button>
+              </div>
+            </motion.div>
+          )}
+
+          {view === 'topic_selection' && (
+            <motion.div key="topic_selection" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+              <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-black">Chọn chủ đề Part 1</h2>
+                <button onClick={resetToHome} className="p-2 hover:bg-card rounded-full transition-colors text-text-secondary"><X className="w-5 h-5" /></button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[...PART_1_TOPICS, ...customP1].map((topic) => (
+                  <button 
+                    key={topic.name} 
+                    onClick={() => startTest(TestPart.PART_1, topic.name)}
+                    className="p-6 bg-card border border-border rounded-[24px] text-left hover:border-accent group transition-all"
+                  >
+                    <span className="block text-[10px] font-black text-text-secondary uppercase tracking-widest mb-1">{topic.questions.length} câu hỏi</span>
+                    <span className="block font-black text-lg group-hover:text-accent transition-colors">Chủ đề {topic.name}</span>
+                  </button>
+                ))}
               </div>
             </motion.div>
           )}
@@ -710,7 +770,10 @@ export default function App() {
                 </div>
               </div>
               <div className="results-panel flex flex-col gap-6">
-                <div className="overall-score-card bg-accent rounded-[24px] p-8 text-center shadow-xl shadow-accent/20"><span className="overall-label text-xs font-bold uppercase tracking-widest opacity-80 block mb-1">Dự kiến Overall</span> <span className="overall-val text-6xl font-black block">{evaluation.overall.toFixed(1)}</span></div>
+                <div className="overall-score-card bg-accent rounded-[24px] p-8 text-center shadow-xl shadow-accent/20">
+                  <span className="overall-label text-xs font-bold uppercase tracking-widest text-white/80 block mb-1">Dự kiến Overall</span> 
+                  <span className="overall-val text-6xl font-black text-white block">{evaluation.overall.toFixed(1)}</span>
+                </div>
               </div>
             </motion.div>
           )}
