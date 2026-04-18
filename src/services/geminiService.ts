@@ -143,7 +143,11 @@ export async function generateSpeakingContent(
   7. LENGTH & FRAMEWORK: 
      - Part 1: 2-3 sentences. Keep it punchy.
      - Part 2: Approximately 150-200 words. Structured but not robotic. Phác thảo (framework) with small size.
-     - Part 3: 3-5 sentences. STRICT FRAMEWORK: Idea (Direct Answer) -> Supporting Detail -> Example.
+     - Part 3: 3-5 sentences. MANDATORY THREE-PART STRUCTURE: 
+       1. Idea: A clear and direct answer.
+       2. Supporting Detail: A logical explanation or reason.
+       3. Example: A concrete example or specific scenario to illustrate.
+       You MUST follow this exact sequence for Part 3.
   8. HIGHLIGHTING: Wrap thematic collocations and natural idioms in the sampleAnswer with double square brackets like this: [[phrase]].
   9. TIPS: Use Vietnamese (tiếng Việt). 
   

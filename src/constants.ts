@@ -316,50 +316,50 @@ export const PART_3_QUESTIONS: { [cueCardId: string]: { id: string, text: string
     {
       id: 'p3_1_1',
       text: 'Do you think successful people are usually good role models?',
-      sampleAnswer: 'It really depends. While some [[achieve success]] through [[hard work and integrity]], others might take shortcuts. So, I think we should look at [[how they achieved]] their success before following them.',
-      tips: 'Cụm "It really depends" giúp bạn có thời gian suy nghĩ và mở rộng ý tửng.'
+      sampleAnswer: 'I\'d say it depends on how they [[attained their success]]. While many people [[achieve success]] through [[hard work and integrity]], others might take shortcuts. For instance, a self-made business person can inspire others to [[be persistent]], but someone who [[cheated their way to the top]] is definitely not a good example.',
+      tips: 'Cấu trúc: Trả lời trực tiếp -> Giải thích (tùy vào cách đạt được) -> Ví dụ (người tự thân và người gian lận).'
     },
     {
       id: 'p3_1_2',
       text: 'Do you think famous people have a responsibility to be good role models?',
-      sampleAnswer: 'That\'s an interesting question. Absolutely. Since they\'re [[constantly in the public eye]], their actions can [[significantly influence]] the [[younger generation]]. For example, if a celebrity promotes [[healthy habits]], their followers might do the same.',
-      tips: 'Dùng "constantly in the public eye" để chỉ việc luôn bị chú ý.'
+      sampleAnswer: 'Definitely, I believe they have a [[major responsibility]]. Since they\'re [[constantly in the public eye]], their actions can [[significantly influence]] the behavior of the [[younger generation]]. To illustrate, if a celebrity promotes [[healthy habits]], their followers are much more likely to [[follow suit]].',
+      tips: 'Cấu trúc: Khẳng định -> Giải thích (sự ảnh hưởng lên giới trẻ) -> Ví dụ (quảng bá thói quen tốt).'
     },
     {
       id: 'p3_1_3',
       text: 'How have role models changed compared to the past?',
-      sampleAnswer: 'Honestly, I think in the past, role models were mostly [[historical figures]] or family members. But nowadays, with [[social media]], anyone who shares [[inspiring content]] can become a hero to others.',
-      tips: 'Đối lập "in the past" với "nowadays".'
+      sampleAnswer: 'In my view, the source of inspiration has shifted drastically. In the past, role models were mostly [[historical figures]] or family members, whereas nowadays, [[social media influencers]] often take that place. For example, many teenagers today look up to [[YouTubers]] more than they do to historical heroes.',
+      tips: 'Cấu trúc: Ý kiến (thay đổi nguồn cảm hứng) -> Giải thích (xưa vs nay) -> Ví dụ (YouTubers).'
     },
     {
       id: 'p3_1_4',
       text: 'Should children be taught about role models in school?',
-      sampleAnswer: 'I think so. It can help them develop [[positive values]] and [[moral standards]] from an early age. Reading about [[inspiring figures]] can motivate them to dream big.',
-      tips: 'Sử dụng "dream big" để nói về hoài bão.'
+      sampleAnswer: 'Yes, I think it\'s [[essential]] for their development. It can help them develop [[positive values]] and [[moral standards]] from an early age. Reading about [[inspiring figures]] like scientists or activists in class can motivate them to [[dream big]] and work hard.',
+      tips: 'Cấu trúc: Đồng ý -> Giải thích (phát triển giá trị đạo đức) -> Ví dụ (nhà khoa học/nhà hoạt động).'
     },
     {
       id: 'p3_1_5',
       text: 'What are the main differences between a celebrity and a role model?',
-      sampleAnswer: 'In my view, a celebrity is simply well-known, but a role model is someone whose [[character or actions]] we want to [[imitate]]. Not all celebrities are [[desirable role models]].',
-      tips: 'Phân biệt "well-known" và "imitate".'
+      sampleAnswer: 'I think the main difference lies in [[character and values]]. A celebrity is simply someone who is [[well-known]], but a role model is someone whose [[admirable actions]] we want to [[imitate]]. For instance, a pop star might be famous for their voice, but a volunteer is a role model for their [[kindness]].',
+      tips: 'Cấu trúc: Khác biệt ở nhân cách -> Giải thích (nổi tiếng vs đáng ngưỡng mộ) -> Ví dụ (ca sĩ vs tình nguyện viên).'
     },
     {
       id: 'p3_1_6',
       text: 'How can parents be better role models for their children?',
-      sampleAnswer: 'Basically, they should [[lead by example]]. Children tend to [[copy what they see]], so if parents show kindness and [[perseverance]], their kids will likely follow suit.',
-      tips: 'Cụm "lead by example" rất hay trong part 3.'
+      sampleAnswer: 'Basically, I think they should always [[lead by example]]. Children tend to [[copy what they see]] rather than what they are told, so parents must show [[integrity]] in their own lives. For example, if parents [[speak politely]] to others, their kids will likely [[follow suit]].',
+      tips: 'Cấu trúc: Làm gương -> Giải thích (trẻ em bắt chước hành động) -> Ví dụ (cách nói chuyện lịch sự).'
     },
     {
       id: 'p3_1_7',
       text: 'Do you think society puts too much pressure on famous people to be perfect?',
-      sampleAnswer: 'To some extent, yes. We often forget that celebrities are [[human beings]] who make mistakes. Expecting them to be [[flawless]] all the time is quite [[unrealistic]].',
-      tips: 'Dùng "To some extent" để bắt đầu ý kiến trung lập.'
+      sampleAnswer: 'To some extent, yes, I believe [[expectations]] are often too high. We often forget that celebrities are [[human beings]] who can make mistakes just like anyone else. Expecting them to be [[flawless]] in every single situation is quite [[unrealistic]].',
+      tips: 'Cấu trúc: Đồng ý một phần -> Giải thích (con người ai cũng có lỗi) -> Ví dụ (kỳ vọng không thực tế).'
     },
     {
       id: 'p3_1_8',
       text: 'Can someone be a role model even if they have made major mistakes in their life?',
-      sampleAnswer: 'Definitely. Sometimes, how someone [[overcomes their mistakes]] and learns from them can be more [[inspiring]] than someone who has never failed.',
-      tips: 'Cấu trúc "how someone..." dùng để mở rộng ý.'
+      sampleAnswer: 'Absolutely, because the way someone [[overcomes their mistakes]] can be very educational. Learning from failure is a [[valuable lesson]] for anyone. For instance, a person who [[battled an addiction]] and successfully recovered can be an [[incredible inspiration]] to others facing the same struggle.',
+      tips: 'Cấu trúc: Chắc chắn -> Giải thích (học từ sai lầm) -> Ví dụ (vượt qua nghiện ngập).'
     }
   ]
 };
