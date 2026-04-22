@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { EvaluationResult, DifficultyLevel } from "../types";
 
 const SYSTEM_INSTRUCTION = `
@@ -222,7 +222,8 @@ export async function generatePronunciationSentence(
     model: "gemini-3-flash-preview",
     contents: { parts: [{ text: `Generate a sentence for: ${vocab}` }] },
     config: {
-      systemInstruction: instruction
+      systemInstruction: instruction,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
     }
   });
 
