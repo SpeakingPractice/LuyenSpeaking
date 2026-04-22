@@ -207,11 +207,15 @@ export async function generatePronunciationSentence(
   const ai = new GoogleGenAI({ apiKey });
   
   const instruction = `
-  You are an expert IELTS Speaking coach.
+  You are an expert IELTS Speaking coach specializing in helping students reach Band 6.0.
   Generate ONE natural, conversational sentence using the vocabulary/idiom provided: "${vocab}".
-  The sentence should sound like it belongs in an IELTS Speaking interview.
-  Crucially, ensure each time you are asked for the same vocab, you provide a DIFFERENT sentence.
-  Return ONLY the sentence text, no explanations.
+  
+  STRICT RULES:
+  1. LEVEL: Band 6.0 maximum. Use clear and common vocabulary.
+  2. GRAMMAR PREFERENCE: Try to use relative clauses (who, which, that), passive voice, or basic tenses.
+  3. TONE: Natural and conversational, as if spoken in an IELTS interview.
+  4. VARIETY: Ensure each time you are asked for the same vocab, you provide a DIFFERENT sentence.
+  5. FORMAT: Return ONLY the sentence text, no explanations, no quotes.
   `;
 
   const response = await ai.models.generateContent({
