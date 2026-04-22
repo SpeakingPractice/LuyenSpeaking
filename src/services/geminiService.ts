@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { EvaluationResult } from "../types";
+import { EvaluationResult, DifficultyLevel } from "../types";
 
 const SYSTEM_INSTRUCTION = `
 You are an expert IELTS Speaking Examiner. Your task is to evaluate a candidate's speaking performance based on the official IELTS Speaking Band Descriptors.
@@ -12,7 +12,11 @@ CRITICAL RULES FOR SCORING:
 5. MILESTONE ENCOURAGEMENT: The user's current target is Band 6.0. 
    - Nếu Overall Score đạt từ 6.0 trở lên, hãy bắt đầu mục "general" feedback bằng lời chúc mừng và động viên nồng nhiệt vì đã đạt được cột mốc mục tiêu.
    - Sau đó, đưa ra các chỉ dẫn cụ thể để cải thiện lên mức 6.5 hoặc 7.0.
-6. HYPER-CONCISE: Each criterion feedback should be max 2 sentences. Focus ONLY on major mistakes and key improvements. Skip all introductory or politeness phrases in criteria feedback (FC, LR, GRA, P).
+6. DETAILED & PERSONALIZED FEEDBACK: For each criterion (FC, LR, GRA, P), provide a thorough analysis of the candidate's performance.
+   - PHÂN TÍCH LỖI SAI: Chỉ ra các ví dụ cụ thể về lỗi sai (từ vựng, ngữ pháp, phát âm) mà thí sinh đã mắc phải trong bài nói.
+   - GỢI Ý SỬA LỖI: Cung cấp cách sửa chính xác cho từng lỗi sai được chỉ ra.
+   - NÂNG CẤP BAND ĐIỂM: Đề xuất 2-3 từ vựng ít phổ biến (less common vocabulary) hoặc cấu trúc ngữ pháp nâng cao (complex structures) phù hợp để giúp thí sinh nâng điểm lên band tiếp theo.
+   - Tất cả phản hồi phải được viết bằng tiếng Việt (trừ các thuật ngữ và ví dụ tiếng Anh cần giữ nguyên).
 
 RESPONSE FORMAT:
 Return a JSON object:
@@ -47,15 +51,21 @@ export async function evaluateSpeaking(
     .join('\n\n');
 
   const parts: any[] = [
-    { text: `Evaluate the following IELTS Speaking performance. Focus specifically on pronunciation accuracy, stress, intonation, and emotional expression.
-    
+    { text: `Đánh giá bài thi IELTS Speaking sau đây. Hãy cung cấp phản hồi chi tiết cho từng tiêu chí:
+1. Fluency and Coherence (FC): Độ trôi chảy và mạch lạc.
+2. Lexical Resource (LR): Vốn từ vựng.
+3. Grammatical Range and Accuracy (GRA): Ngữ pháp.
+4. Pronunciation (P): Phát âm.
+
+Đối với mỗi tiêu chí, hãy:
+- Liệt kê các lỗi cụ thể từ transcript hoặc audio.
+- Giải thích tại sao đó là lỗi và gợi ý cách sửa.
+- Đề xuất các từ vựng hoặc cấu trúc "ăn điểm" (Band 7.0+) liên quan đến chủ đề để thí sinh cải thiện.
+
 Transcripts provided:
 ${transcriptText || "No transcripts provided. Please use the attached audio files to transcribe and evaluate the candidate's speech."}
 
-If audio files are provided, prioritize the audio for evaluating Pronunciation (P), Fluency (FC), and emotional delivery. 
-Provide a "pronunciationAccuracy" score from 0-100, where 100 is native-like and 80+ is required to "pass" this level.
-
-Please analyze the language used, the coherence, and the grammatical accuracy based on IELTS standards (Targeting Band 6.5).` }
+Nếu có file âm thanh, hãy ưu tiên âm thanh để đánh giá Phát âm (P) và sự tự nhiên. Cung cấp điểm "pronunciationAccuracy" từ 0-100.` }
   ];
 
   if (audioData) {
@@ -119,7 +129,8 @@ Please analyze the language used, the coherence, and the grammatical accuracy ba
 export async function generateSpeakingContent(
   part: 1 | 2 | 3,
   input: string, // topic or question
-  userApiKey?: string
+  userApiKey?: string,
+  difficulty: DifficultyLevel = DifficultyLevel.INTERMEDIATE
 ): Promise<{ sampleAnswer: string; framework?: string; tips?: string }> {
   const apiKey = userApiKey || process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("Gemini API Key missing");
@@ -127,11 +138,14 @@ export async function generateSpeakingContent(
   const ai = new GoogleGenAI({ apiKey });
   
   const instruction = `
-  You are an expert IELTS Speaking coach specializing in natural communication for candidates aiming for Band 6.0.
+  You are an expert IELTS Speaking coach specializing in natural communication for candidates aiming for ${difficulty}.
   Your goal is to generate sample answers for IELTS Speaking Part ${part}.
   
   STRICT STYLE RULES:
-  1. VOCABULARY: Use clear, effective, and common words. Focus on natural phrasing rather than "high-level" or "academic" terms. The goal is to sound like a native speaker, not a dictionary.
+  1. VOCABULARY: Use words and phrases appropriate for a ${difficulty} level.
+     - For BEGINNER (4.5-5.5): Focus on simple, clear, and accurate language. Avoid over-complicating ideas.
+     - For INTERMEDIATE (6.0-6.5): Use some less common vocabulary, more idiomatic language, and varied sentence structures.
+     - For ADVANCED (7.0+): Use sophisticated vocabulary, precise phrasing, and complex grammatical structures naturally.
   2. COLLOCATIONS: Prioritize thematic collocations that occur naturally in speech.
   3. IDIOMS: Use 1 natural idiom or common spoken phrase per answer (e.g., "to be honest", "once in a while"). Avoid forced or complex idioms.
   4. TONE: Warm, natural, and conversational. 

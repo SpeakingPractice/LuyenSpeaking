@@ -22,12 +22,14 @@ import {
   Wand2,
   Radio,
   Quote,
-  Languages
+  Languages,
+  Volume2,
+  BarChart3
 } from 'lucide-react';
 import { ContributionTracker } from './components/ContributionTracker';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
-import { TestPart, TestSession, EvaluationResult, Question, HistoryItem } from './types';
+import { TestPart, TestSession, EvaluationResult, Question, HistoryItem, DifficultyLevel } from './types';
 import { evaluateSpeaking, generateSpeakingContent, generatePronunciationSentence } from './services/geminiService';
 import { PART_1_TOPICS, PART_2_CUE_CARDS, PART_3_QUESTIONS } from './constants';
 
@@ -53,6 +55,10 @@ export default function App() {
   const [micLevel, setMicLevel] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showVocab, setShowVocab] = useState(false);
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>(() => {
+    const saved = localStorage.getItem('difficulty_level');
+    return (saved as DifficultyLevel) || DifficultyLevel.INTERMEDIATE;
+  });
   const [userApiKey, setUserApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
   const [history, setHistory] = useState<HistoryItem[]>(() => {
     const saved = localStorage.getItem('test_history');
@@ -325,6 +331,45 @@ export default function App() {
     }
   };
 
+  const speakQuestion = (text: string) => {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const voices = window.speechSynthesis.getVoices();
+    const britishMaleVoice = voices.find(v => 
+      (v.lang.includes('en-GB') || v.lang.includes('en_GB')) && 
+      (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('daniel') || v.name.toLowerCase().includes('guy'))
+    ) || voices.find(v => v.lang.includes('en-GB')) || voices[0];
+    if (britishMaleVoice) utterance.voice = britishMaleVoice;
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const getSampleAnswer = async () => {
+    if (!session || !userApiKey) { setShowSettings(true); return; }
+    const currentQ = session.questions[session.currentQuestionIndex];
+    
+    setIsLevelLoading(true);
+    try {
+      const input = currentQ.part === 2 ? (currentQ as any).text : currentQ.text;
+      const result = await generateSpeakingContent(currentQ.part, input, userApiKey, difficulty);
+      const updatedQuestions = [...session.questions];
+      updatedQuestions[session.currentQuestionIndex] = {
+        ...currentQ,
+        sampleAnswer: result.sampleAnswer,
+        framework: result.framework || currentQ.framework,
+        tips: result.tips || currentQ.tips
+      };
+      setSession({ ...session, questions: updatedQuestions });
+      setIsSampleExpanded(true);
+    } catch (err) {
+      alert("Lỗi khi tạo câu trả lời mẫu.");
+    } finally {
+      setIsLevelLoading(false);
+    }
+  };
+
   const evaluateLevel = async () => {
     if (!session || !userApiKey || isLevelLoading) return;
     const currentQ = session.questions[session.currentQuestionIndex];
@@ -582,9 +627,18 @@ export default function App() {
 
               <div className="bg-card p-16 rounded-[40px] border border-border min-h-[400px] flex flex-col items-center justify-center text-center space-y-10 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-1 h-full bg-accent" />
-                <div className="space-y-4">
+                <div className="space-y-4 relative group">
                   {currentQuestion.topic && <span className="px-3 py-1 bg-accent/10 text-accent text-[10px] font-black rounded-full uppercase tracking-widest">Topic: {currentQuestion.topic}</span>}
-                  <motion.p key={currentQuestion.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`text-3xl md:text-5xl font-bold text-text-primary leading-tight max-w-4xl`}>"{currentQuestion.text}"</motion.p>
+                  <div className="flex items-center justify-center gap-4">
+                    <motion.p key={currentQuestion.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`text-2xl md:text-4xl font-bold text-text-primary leading-tight max-w-4xl`}>"{currentQuestion.text}"</motion.p>
+                    <button 
+                      onClick={() => speakQuestion(currentQuestion.text)}
+                      className="p-3 bg-white/5 border border-border rounded-full hover:bg-accent/10 hover:border-accent transition-all text-text-secondary hover:text-accent flex-shrink-0"
+                      title="Nghe câu hỏi (Giọng Anh-Anh)"
+                    >
+                      <Volume2 className="w-6 h-6" />
+                    </button>
+                  </div>
                 </div>
                 <div className="w-full max-w-3xl text-left space-y-6">
                   {currentQuestion.framework && (
@@ -601,33 +655,46 @@ export default function App() {
                     </div>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    {currentQuestion.sampleAnswer && (
-                      <div className="rounded-2xl border border-border overflow-hidden bg-white/5">
+                    <div className="rounded-2xl border border-border overflow-hidden bg-white/5">
+                      <div className="flex items-center">
                         <button 
-                          onClick={() => setIsSampleExpanded(!isSampleExpanded)}
-                          className="w-full p-4 flex items-center justify-between hover:bg-white/5 transition-colors"
+                          onClick={() => currentQuestion.sampleAnswer && setIsSampleExpanded(!isSampleExpanded)}
+                          className="flex-1 p-4 flex items-center justify-between hover:bg-white/5 transition-colors text-left"
                         >
-                          <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Gợi Ý Trả Lời (Band 6.5)</span>
-                          <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform duration-300 ${isSampleExpanded ? 'rotate-180' : ''}`} />
-                        </button>
-                        <AnimatePresence>
-                          {isSampleExpanded && (
-                            <motion.div 
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.3, ease: 'easeInOut' }}
-                            >
-                              <div className="px-6 pb-6 border-t border-border mt-2 pt-4">
-                                <p className="text-base md:text-lg text-text-primary leading-relaxed whitespace-pre-line text-left">
-                                  <HighlightedText text={currentQuestion.sampleAnswer.replace(/\\n/g, '\n')} />
-                                </p>
-                              </div>
-                            </motion.div>
+                          <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest leading-none">
+                            {currentQuestion.sampleAnswer ? `Gợi Ý Trả Lời (${difficulty === DifficultyLevel.BEGINNER ? 'Band 5.0' : difficulty === DifficultyLevel.INTERMEDIATE ? 'Band 6.5' : 'Band 8.0'})` : 'Chưa có bài mẫu'}
+                          </span>
+                          {currentQuestion.sampleAnswer && (
+                            <ChevronDown className={`w-4 h-4 text-text-secondary transition-transform duration-300 ${isSampleExpanded ? 'rotate-180' : ''}`} />
                           )}
-                        </AnimatePresence>
+                        </button>
+                        <button 
+                          onClick={getSampleAnswer}
+                          disabled={isLevelLoading}
+                          className={`p-4 border-l border-border hover:bg-accent/10 hover:text-accent transition-all text-text-secondary ${isLevelLoading ? 'animate-pulse' : ''}`}
+                          title="Tạo/Làm mới bài mẫu bằng AI theo độ khó"
+                        >
+                          <Wand2 className="w-4 h-4" />
+                        </button>
                       </div>
-                    )}
+                      <AnimatePresence>
+                        {isSampleExpanded && currentQuestion.sampleAnswer && (
+                          <motion.div 
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                          >
+                            <div className="px-6 pb-6 border-t border-border mt-2 pt-4 text-left">
+                              <p className="text-base md:text-lg text-text-primary leading-relaxed whitespace-pre-line">
+                                <HighlightedText text={currentQuestion.sampleAnswer.replace(/\\n/g, '\n')} />
+                              </p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
                     {currentQuestion.tips && (
                       <div className="rounded-2xl border border-border overflow-hidden bg-white/5">
                         <button 
@@ -738,6 +805,7 @@ export default function App() {
               }}
               existingP2={[...PART_2_CUE_CARDS, ...customP2]}
               userApiKey={userApiKey}
+              difficulty={difficulty}
             />
           )}
 
@@ -763,9 +831,13 @@ export default function App() {
                       <div key={i} className="space-y-4 text-left">
                         <div className="flex items-center justify-between"><h4 className="font-bold text-accent uppercase text-xs tracking-[0.2em]">{item.label}</h4><span className="text-success font-bold">Band {item.score}</span></div>
                         <div className="prose prose-sm max-w-none"><ReactMarkdown>{item.content}</ReactMarkdown></div>
-                        {i < 3 && <hr className="border-border" />}
+                        <hr className="border-border" />
                       </div>
                     ))}
+                    <div className="space-y-4 text-left">
+                      <h4 className="font-bold text-accent uppercase text-xs tracking-[0.2em]">Nhận xét chung</h4>
+                      <div className="prose prose-sm max-w-none"><ReactMarkdown>{evaluation.feedback.general}</ReactMarkdown></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -863,7 +935,32 @@ export default function App() {
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-card border border-border p-8 rounded-[32px] w-full max-w-md space-y-6">
             <div className="flex items-center justify-between"><h3 className="text-2xl font-black">Cài đặt API</h3><button onClick={() => setShowSettings(false)} className="text-text-secondary hover:text-text-primary transition-colors">X</button></div>
             <div className="space-y-4">
-              <div className="space-y-2"><p className="text-xs font-bold uppercase tracking-widest">Gemini API Key</p><input type="password" value={userApiKey} onChange={(e) => { setUserApiKey(e.target.value); localStorage.setItem('gemini_api_key', e.target.value); }} className="w-full bg-bg border border-border px-4 py-3 rounded-xl focus:border-accent outline-none" placeholder="Nhập API Key của bạn..." /></div>
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-accent" />
+                  Mức độ khó
+                </p>
+                <select 
+                  value={difficulty} 
+                  onChange={(e) => { 
+                    const level = e.target.value as DifficultyLevel;
+                    setDifficulty(level); 
+                    localStorage.setItem('difficulty_level', level); 
+                  }} 
+                  className="w-full bg-bg border border-border px-4 py-3 rounded-xl focus:border-accent outline-none font-bold"
+                >
+                  {Object.values(DifficultyLevel).map(level => (
+                    <option key={level} value={level}>{level}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                  <Wand2 className="w-4 h-4 text-accent" />
+                  Gemini API Key
+                </p>
+                <input type="password" value={userApiKey} onChange={(e) => { setUserApiKey(e.target.value); localStorage.setItem('gemini_api_key', e.target.value); }} className="w-full bg-bg border border-border px-4 py-3 rounded-xl focus:border-accent outline-none" placeholder="Nhập API Key của bạn..." />
+              </div>
             </div>
             <button onClick={() => setShowSettings(false)} className="w-full py-4 bg-accent text-white font-black rounded-xl hover:opacity-90 transition-all">Lưu thay đổi</button>
           </motion.div>
@@ -939,7 +1036,7 @@ export default function App() {
   );
 }
 
-const AddQuestionView = ({ onBack, onSave, existingP2, userApiKey }: { onBack: () => void, onSave: (part: number, data: any) => void, existingP2: any[], userApiKey?: string }) => {
+const AddQuestionView = ({ onBack, onSave, existingP2, userApiKey, difficulty }: { onBack: () => void, onSave: (part: number, data: any) => void, existingP2: any[], userApiKey?: string, difficulty: DifficultyLevel }) => {
   const [activePart, setActivePart] = useState(1);
   const [isGenerating, setIsGenerating] = useState<number | null>(null); // part number or question index
 
@@ -960,11 +1057,11 @@ const AddQuestionView = ({ onBack, onSave, existingP2, userApiKey }: { onBack: (
   const [p3Text, setP3Text] = useState('');
   const [p3Answer, setP3Answer] = useState('');
 
-  const handleGenerate = async (part: 1 | 2 | 3, input: string, target: 'p1q1' | 'p1q2' | 'p2' | 'p3') => {
+  const handleGenerate = async (part: 1 | 2 | 3, input: string, target: 'p1q1' | 'p1q2' | 'p2' | 'p3', difficulty: DifficultyLevel) => {
     if (!input) return alert('Vui lòng nhập câu hỏi hoặc chủ đề trước.');
     setIsGenerating(part);
     try {
-      const result = await generateSpeakingContent(part, input, userApiKey);
+      const result = await generateSpeakingContent(part, input, userApiKey, difficulty);
       if (target === 'p1q1') setP1Q1A(result.sampleAnswer);
       if (target === 'p1q2') setP1Q2A(result.sampleAnswer);
       if (target === 'p2') {
@@ -1046,7 +1143,7 @@ const AddQuestionView = ({ onBack, onSave, existingP2, userApiKey }: { onBack: (
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Câu hỏi 1</label>
                       <button 
-                        onClick={() => handleGenerate(1, p1Q1, 'p1q1')}
+                        onClick={() => handleGenerate(1, p1Q1, 'p1q1', difficulty)}
                         disabled={isGenerating !== null}
                         className="text-[10px] font-black text-accent flex items-center gap-1 hover:opacity-80 disabled:opacity-50"
                       >
@@ -1066,7 +1163,7 @@ const AddQuestionView = ({ onBack, onSave, existingP2, userApiKey }: { onBack: (
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Câu hỏi 2</label>
                       <button 
-                        onClick={() => handleGenerate(1, p1Q2, 'p1q2')}
+                        onClick={() => handleGenerate(1, p1Q2, 'p1q2', difficulty)}
                         disabled={isGenerating !== null}
                         className="text-[10px] font-black text-accent flex items-center gap-1 hover:opacity-80 disabled:opacity-50"
                       >
@@ -1097,7 +1194,7 @@ const AddQuestionView = ({ onBack, onSave, existingP2, userApiKey }: { onBack: (
                     <div className="flex items-center justify-between">
                       <label className="text-[10px] font-black text-accent uppercase tracking-widest">Đề bài (Cue Card Text)</label>
                       <button 
-                        onClick={() => handleGenerate(2, p2Text, 'p2')}
+                        onClick={() => handleGenerate(2, p2Text, 'p2', difficulty)}
                         disabled={isGenerating !== null}
                         className="text-[10px] font-black text-accent flex items-center gap-1 hover:opacity-80 disabled:opacity-50"
                       >
@@ -1140,7 +1237,7 @@ const AddQuestionView = ({ onBack, onSave, existingP2, userApiKey }: { onBack: (
                 <div className="flex items-center justify-between">
                   <label className="text-[10px] font-black text-accent uppercase tracking-widest">Câu hỏi</label>
                   <button 
-                    onClick={() => handleGenerate(3, p3Text, 'p3')}
+                    onClick={() => handleGenerate(3, p3Text, 'p3', difficulty)}
                     disabled={isGenerating !== null}
                     className="text-[10px] font-black text-accent flex items-center gap-1 hover:opacity-80 disabled:opacity-50"
                   >

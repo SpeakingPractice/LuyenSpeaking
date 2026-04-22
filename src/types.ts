@@ -1,3 +1,9 @@
+export enum DifficultyLevel {
+  BEGINNER = '4.5 - 5.5 (Cơ bản)',
+  INTERMEDIATE = '6.0 - 6.5 (Trung cấp)',
+  ADVANCED = '7.0+ (Nâng cao)'
+}
+
 export enum TestPart {
   PART_1 = 'Part 1',
   PART_2 = 'Part 2',
