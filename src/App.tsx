@@ -748,15 +748,40 @@ export default function App() {
                         )}
                         <p className="text-sm font-bold tracking-widest uppercase text-text-secondary">{isRecording ? "Đang ghi âm câu trả lời..." : transcript ? "Ghi âm hoàn tất" : "Nhấn để trả lời"}</p>
                       </div>
-                      {transcript && !isRecording && (
-                        <div className="w-full max-w-2xl bg-bg/50 p-8 rounded-3xl border border-border text-left space-y-4">
-                          <p className="text-lg text-text-primary italic leading-relaxed">"{transcript}"</p>
-                          {session.mode === TestPart.QUEST ? (
-                            <button onClick={evaluateLevel} disabled={isLevelLoading} className="w-full py-5 bg-text-primary text-bg font-black rounded-2xl flex items-center justify-center gap-3">
-                              {isLevelLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Award className="w-6 h-6" /> KIỂM TRA ĐỘ CHÍNH XÁC (TGT 80%)</>}
+
+                      {!isRecording && (
+                        <div className="w-full max-w-2xl space-y-6">
+                          {transcript && (
+                            <div className="bg-bg/50 p-8 rounded-3xl border border-border text-left">
+                              <p className="text-lg text-text-primary italic leading-relaxed">"{transcript}"</p>
+                            </div>
+                          )}
+                          
+                          <div className="flex flex-col sm:flex-row gap-4">
+                            {session.mode === TestPart.QUEST ? (
+                              <button 
+                                onClick={evaluateLevel} 
+                                disabled={isLevelLoading || !transcript} 
+                                className="flex-[3] py-5 bg-text-primary text-bg font-black rounded-2xl flex items-center justify-center gap-3 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity shadow-lg"
+                              >
+                                {isLevelLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Award className="w-6 h-6" /> KIỂM TRA ĐỘ CHÍNH XÁC</>}
+                              </button>
+                            ) : (
+                              <button onClick={nextQuestion} className="flex-[3] py-5 bg-text-primary text-bg font-black rounded-2xl flex items-center justify-center gap-3 shadow-lg hover:shadow-text-primary/10 transition-all">
+                                {session.currentQuestionIndex + 1 === session.questions.length ? "HOÀN TẤT" : "TIẾP TỤC"} 
+                                <ChevronRight className="w-6 h-6" />
+                              </button>
+                            )}
+                            
+                            <button onClick={nextQuestion} className="flex-1 py-5 bg-card border border-border text-text-secondary font-bold rounded-2xl hover:bg-white/5 transition-colors">
+                              {session.mode === TestPart.QUEST ? "BỎ QUA" : "SKIP"}
                             </button>
-                          ) : (
-                            <button onClick={nextQuestion} className="w-full py-5 bg-text-primary text-bg font-black rounded-2xl flex items-center justify-center gap-3">TIẾP TỤC <ChevronRight className="w-6 h-6" /></button>
+                          </div>
+                          
+                          {!transcript && timer > 0 && (
+                            <p className="text-xs font-bold text-red-400 bg-red-400/5 py-3 px-4 rounded-xl border border-red-400/20 uppercase tracking-widest text-center">
+                              ⚠️ Không nhận diện được giọng nói. Hãy thử lại hoặc bấm "BỎ QUA".
+                            </p>
                           )}
                         </div>
                       )}
