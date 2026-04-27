@@ -48,40 +48,48 @@ export async function evaluateSpeaking(
   const ai = new GoogleGenAI({ apiKey });
 
   const transcriptText = Object.entries(transcripts)
-    .map(([id, text]) => `Question ${id}: ${text}`)
+    .filter(([_, text]) => text && text.trim().length > 0)
+    .map(([id, text]) => `Question/Part ${id}: ${text}`)
     .join('\n\n');
 
   const parts: any[] = [
-    { text: `Đánh giá bài thi IELTS Speaking sau đây. Hãy cung cấp phản hồi chi tiết cho từng tiêu chí:
-1. Fluency and Coherence (FC): Độ trôi chảy và mạch lạc.
-2. Lexical Resource (LR): Vốn từ vựng.
-3. Grammatical Range and Accuracy (GRA): Ngữ pháp.
-4. Pronunciation (P): Phát âm.
+    { text: `Đánh giá bài thi IELTS Speaking. Hãy phân tích kỹ lưỡng TRANSCRIPT và AUDIO (nếu có) để đưa ra điểm số và nhận xét chính xác.
 
-Đối với mỗi tiêu chí, hãy:
-- Liệt kê các lỗi cụ thể từ transcript hoặc audio.
-- Giải thích tại sao đó là lỗi và gợi ý cách sửa.
-- Đề xuất các từ vựng hoặc cấu trúc "ăn điểm" (Band 7.0+) liên quan đến chủ đề để thí sinh cải thiện.
+TIÊU CHÍ ĐÁNH GIÁ:
+1. FC (Fluency and Coherence): Sự trôi chảy và mạch lạc.
+2. LR (Lexical Resource): Độ đa dạng và chính xác của từ vựng.
+3. GRA (Grammatical Range and Accuracy): Độ đa dạng và chính xác của ngữ pháp.
+4. P (Pronunciation): Phát âm, bao gồm trọng âm, ngữ điệu và sự rõ ràng.
 
-Transcripts provided:
-${transcriptText || "No transcripts provided. Please use the attached audio files to transcribe and evaluate the candidate's speech."}
+DỮ LIỆU CUNG CẤP:
+Transcripts:
+${transcriptText || "Không có transcript. Hãy dựa hoàn toàn vào audio được đính kèm."}
 
-Nếu có file âm thanh, hãy ưu tiên âm thanh để đánh giá Phát âm (P) và sự tự nhiên. Cung cấp điểm "pronunciationAccuracy" từ 0-100.` }
+HƯỚNG DẪN CỤ THỂ:
+- Nếu có audio, hãy nghe kỹ để đánh giá Phát âm (P) một cách trung thực nhất. 
+- Tính toán "pronunciationAccuracy" (0-100) dựa trên mức độ dễ hiểu và độ chính xác của các nguyên âm/phụ âm/trọng âm.
+- Score cho mỗi tiêu chí (fc, lr, gra, p) phải là số nguyên (ví dụ: 5, 6, 7). Nếu ở giữa, hãy làm tròn xuống.
+- Overall score là trung bình cộng, chỉ cho phép đuôi .0 hoặc .5 (ví dụ: 6.0, 6.5).
+- Phản hồi (feedback) phải chi tiết, ghi rõ lỗi sai và cách sửa cho từng tiêu chí theo format đã yêu cầu.
+- Luôn sử dụng tiếng Việt cho phần nhận xét.` }
   ];
 
   if (audioData) {
     Object.entries(audioData).forEach(([id, audio]) => {
-      parts.push({
-        inlineData: {
-          data: audio.data,
-          mimeType: audio.mimeType
-        }
-      });
+      if (audio && audio.data) {
+        parts.push({ text: `Audio for Question/Part ${id}:` });
+        parts.push({
+          inlineData: {
+            data: audio.data,
+            mimeType: audio.mimeType
+          }
+        });
+      }
     });
   }
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-3.1-pro-preview",
     contents: { parts },
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
@@ -119,11 +127,22 @@ Nếu có file âm thanh, hãy ưu tiên âm thanh để đánh giá Phát âm (
   });
 
   try {
-    const text = response.text || '{}';
-    return JSON.parse(text) as EvaluationResult;
+    const rawText = response.text || '';
+    const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    if (!cleanText) throw new Error("Empty response from AI");
+    
+    const result = JSON.parse(cleanText) as EvaluationResult;
+    
+    // Final check for essential fields
+    if (!result.scores || !result.feedback || typeof result.overall !== 'number') {
+      throw new Error("Invalid evaluation format");
+    }
+    
+    return result;
   } catch (e) {
     console.error("Failed to parse evaluation result", e);
-    throw new Error("Evaluation failed. Please try again.");
+    console.error("Raw response:", response.text);
+    throw new Error("Đánh giá thất bại do lỗi xử lý dữ liệu. Vui lòng thử lại.");
   }
 }
 
@@ -195,7 +214,14 @@ export async function generateSpeakingContent(
     }
   });
 
-  return JSON.parse(response.text || '{}');
+  try {
+    const rawText = response.text || '';
+    const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanText || '{}');
+  } catch (e) {
+    console.error("Failed to parse sample answer", e);
+    return { sampleAnswer: "Lỗi khi tạo câu trả lời mẫu. Vui lòng thử lại." };
+  }
 }
 
 export async function generatePronunciationSentence(

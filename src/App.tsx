@@ -414,7 +414,7 @@ export default function App() {
         setTotalScore(prev => prev + pts);
       }
     } catch (err) {
-      alert("Lỗi khi đánh giá ải.");
+      alert(err instanceof Error ? err.message : "Lỗi khi đánh giá bài thi.");
     } finally {
       setIsLevelLoading(false);
     }
@@ -434,7 +434,7 @@ export default function App() {
       const result = await evaluateSpeaking({ "p": transcript || "" }, { "p": audio }, userApiKey);
       setLevelEvaluation(result);
     } catch (err) {
-      alert("Lỗi khi đánh giá phát âm.");
+      alert(err instanceof Error ? err.message : "Lỗi khi đánh giá phát âm.");
     } finally {
       setIsLevelLoading(false);
     }
@@ -464,7 +464,7 @@ export default function App() {
       setView('result');
     } catch (err) {
       setView('test');
-      alert("Đánh giá thất bại.");
+      alert(err instanceof Error ? err.message : "Đánh giá thất bại. Vui lòng thử lại.");
     }
   };
 
