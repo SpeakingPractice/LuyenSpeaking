@@ -401,13 +401,13 @@ export default function App() {
   const evaluateLevel = async () => {
     if (!session || !userApiKey || isLevelLoading) return;
     const currentQ = session.questions[session.currentQuestionIndex];
-    if (!audioData[currentQ.id] || !transcript) {
+    if (!audioData[currentQ.id]) {
       alert("Vui lòng ghi âm câu trả lời trước.");
       return;
     }
     setIsLevelLoading(true);
     try {
-      const result = await evaluateSpeaking({ [currentQ.id]: transcript }, { [currentQ.id]: audioData[currentQ.id] }, userApiKey);
+      const result = await evaluateSpeaking({ [currentQ.id]: transcript || "" }, { [currentQ.id]: audioData[currentQ.id] }, userApiKey);
       setLevelEvaluation(result);
       if (result.pronunciationAccuracy >= 80) {
         let pts = currentQ.part === 1 ? 2 : (currentQ.part === 2 ? 3 : 5);
@@ -422,19 +422,16 @@ export default function App() {
 
   const evaluatePronunciation = async () => {
     if (!userApiKey || isLevelLoading || !currentPronunciationVocab || !currentPronunciationSentence) return;
-    if (!transcript) {
-      alert("Vui lòng ghi âm trước.");
+    // For pronunciation practice, we use "p" as key
+    const audio = audioData["p"]; 
+    if (!audio) {
+      alert("Vui lòng ghi âm phát âm trước.");
       return;
     }
     
-    // We need some audio data. The current currentPronunciationSentence is evaluated.
-    // However, the audioData is keyed by question id. 
-    // For pronunciation practice, we can use a fixed key.
-    const audio = audioData["p"]; 
-    
     setIsLevelLoading(true);
     try {
-      const result = await evaluateSpeaking({ "p": transcript }, audio ? { "p": audio } : undefined, userApiKey);
+      const result = await evaluateSpeaking({ "p": transcript || "" }, { "p": audio }, userApiKey);
       setLevelEvaluation(result);
     } catch (err) {
       alert("Lỗi khi đánh giá phát âm.");
@@ -528,6 +525,15 @@ export default function App() {
         })}
       </>
     );
+  };
+
+  const formatFeedback = (text: string) => {
+    if (!text) return '';
+    return text
+      .replace(/\n*(\*\*Lỗi cụ thể:\*\*)/g, '\n\n$1')
+      .replace(/\n*(\*\*Gợi ý sửa:\*\*)/g, '\n\n$1')
+      .replace(/\n*(\*\*Nâng cấp Band 7\.0\+:\*\*)/g, '\n\n$1')
+      .trim();
   };
 
   const currentQuestion = session?.questions[session.currentQuestionIndex];
@@ -797,7 +803,7 @@ export default function App() {
                             {session.mode === TestPart.QUEST ? (
                               <button 
                                 onClick={evaluateLevel} 
-                                disabled={isLevelLoading || !transcript} 
+                                disabled={isLevelLoading || !audioData[session.questions[session.currentQuestionIndex].id]} 
                                 className="flex-[3] py-5 bg-text-primary text-bg font-black rounded-2xl flex items-center justify-center gap-3 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity shadow-lg"
                               >
                                 {isLevelLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Award className="w-6 h-6" /> KIỂM TRA ĐỘ CHÍNH XÁC</>}
@@ -814,9 +820,14 @@ export default function App() {
                             </button>
                           </div>
                           
-                          {!transcript && timer > 0 && (
+                          {!transcript && !isRecording && timer > 0 && !audioData[session.questions[session.currentQuestionIndex].id] && (
                             <p className="text-xs font-bold text-red-400 bg-red-400/5 py-3 px-4 rounded-xl border border-red-400/20 uppercase tracking-widest text-center">
-                              ⚠️ Không nhận diện được giọng nói. Hãy thử lại hoặc bấm "BỎ QUA".
+                              ⚠️ Không nhận diện được âm thanh. Hãy thử lại hoặc bấm "BỎ QUA".
+                            </p>
+                          )}
+                          {!transcript && !isRecording && timer > 0 && audioData[session.questions[session.currentQuestionIndex].id] && (
+                            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest text-center opacity-60">
+                              (Đã ghi âm thành công, nhưng trình duyệt không hiển thị được văn bản bản dịch)
                             </p>
                           )}
                         </div>
@@ -884,10 +895,10 @@ export default function App() {
                   <div className="flex items-center justify-between"><h2 className="text-3xl font-black">Phân tích chi tiết</h2><button onClick={resetToHome} className="px-5 py-2.5 bg-white/5 border border-border text-text-primary font-bold rounded-xl flex items-center gap-2 text-sm"><RotateCcw className="w-4 h-4" /> Reset</button></div>
                   <div className="space-y-10">
                     {[
-                      { label: 'Trôi chảy & Mạch lạc', content: evaluation.feedback.fc, score: evaluation.scores.fc },
-                      { label: 'Vốn từ vựng', content: evaluation.feedback.lr, score: evaluation.scores.lr },
-                      { label: 'Ngữ pháp chính xác', content: evaluation.feedback.gra, score: evaluation.scores.gra },
-                      { label: 'Phát âm', content: evaluation.feedback.p, score: evaluation.scores.p },
+                      { label: 'Trôi chảy & Mạch lạc', content: formatFeedback(evaluation.feedback.fc), score: evaluation.scores.fc },
+                      { label: 'Vốn từ vựng', content: formatFeedback(evaluation.feedback.lr), score: evaluation.scores.lr },
+                      { label: 'Ngữ pháp chính xác', content: formatFeedback(evaluation.feedback.gra), score: evaluation.scores.gra },
+                      { label: 'Phát âm', content: formatFeedback(evaluation.feedback.p), score: evaluation.scores.p },
                     ].map((item, i) => (
                       <div key={i} className="space-y-4 text-left">
                         <div className="flex items-center justify-between"><h4 className="font-bold text-accent uppercase text-xs tracking-[0.2em]">{item.label}</h4><span className="text-success font-bold">Band {item.score}</span></div>
@@ -897,7 +908,7 @@ export default function App() {
                     ))}
                     <div className="space-y-4 text-left">
                       <h4 className="font-bold text-accent uppercase text-xs tracking-[0.2em]">Nhận xét chung</h4>
-                      <div className="prose prose-sm max-w-none"><ReactMarkdown>{evaluation.feedback.general}</ReactMarkdown></div>
+                      <div className="prose prose-sm max-w-none"><ReactMarkdown>{formatFeedback(evaluation.feedback.general)}</ReactMarkdown></div>
                     </div>
                   </div>
                 </div>
@@ -966,10 +977,10 @@ export default function App() {
                             </p>
                           </div>
 
-                          {transcript && !isRecording && (
+                          {(transcript || audioData["p"]) && !isRecording && (
                             <div className="w-full bg-card p-6 rounded-2xl border border-border text-left">
                               <p className="text-sm font-bold text-text-secondary uppercase mb-2">Bạn đã đọc:</p>
-                              <p className="text-lg text-text-primary italic">"{transcript}"</p>
+                              <p className="text-lg text-text-primary italic">"{transcript || "(Không trích xuất được văn bản, nhưng đã nhận diện được âm thanh)"}"</p>
                               <button onClick={evaluatePronunciation} disabled={isLevelLoading} className="w-full mt-6 py-4 bg-text-primary text-bg font-black rounded-xl flex items-center justify-center gap-3">
                                 {isLevelLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Award className="w-5 h-5" /> KIỂM TRA ĐỘ CHÍNH XÁC (MỤC TIÊU 80%)</>}
                               </button>
