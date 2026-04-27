@@ -74,6 +74,7 @@ export default function App() {
   const [audioData, setAudioData] = useState<Record<string, { data: string, mimeType: string }>>({});
   const [isSampleExpanded, setIsSampleExpanded] = useState(false);
   const [isTipsExpanded, setIsTipsExpanded] = useState(false);
+  const [isStartingRecorder, setIsStartingRecorder] = useState(false);
   const [p3UsageStats, setP3UsageStats] = useState<Record<string, number>>(() => {
     const saved = localStorage.getItem('p3_usage_stats');
     return saved ? JSON.parse(saved) : {};
@@ -253,7 +254,16 @@ export default function App() {
   };
 
   const startRecording = async () => {
+    setTranscript('');
+    setTimer(0);
+    setMicLevel(0);
+    setIsStartingRecorder(true);
+    
     try {
+      // Use a slightly more progressive approach:
+      // We don't set isRecording=true yet because that shows the 'Stop' button.
+      // But we can show that we are starting.
+      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -272,7 +282,7 @@ export default function App() {
         if (!analyserRef.current) return;
         analyserRef.current.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        setMicLevel(average);
+        setMicLevel(average || 0);
         if (mediaRecorderRef.current?.state === 'recording') {
           requestAnimationFrame(updateLevel);
         }
@@ -288,18 +298,36 @@ export default function App() {
         } else if (view === 'pronunciation') {
           setAudioData(prev => ({ ...prev, "p": { data: base64, mimeType: 'audio/webm' } }));
         }
-        if (audioContextRef.current) audioContextRef.current.close();
+        if (audioContextRef.current) {
+          audioContextRef.current.close().catch(console.error);
+        }
         setMicLevel(0);
       };
 
       mediaRecorder.start();
-      updateLevel();
+      
+      // Crucial: Resume audio context for some browsers
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+
       setIsRecording(true);
-      setTranscript('');
-      setTimer(0);
-      if (recognitionRef.current) recognitionRef.current.start();
+      updateLevel();
+
+      // Start recognition asynchronously to not block the main UI update
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+        } catch (e) {
+          console.warn("Speech recognition already started or failed to start", e);
+          // If it fails, we still have the binary recording (MediaRecorder) as backup
+        }
+      }
     } catch (err) {
-      alert("Vui lòng cho phép quyền truy cập micro.");
+      console.error(err);
+      alert("Không thể khởi động micro. Vui lòng kiểm tra quyền truy cập.");
+    } finally {
+      setIsStartingRecorder(false);
     }
   };
 
@@ -742,11 +770,19 @@ export default function App() {
                       </div>
                       <div className="flex flex-col items-center gap-4">
                         {!isRecording ? (
-                          <button onClick={startRecording} className="w-24 h-24 bg-accent rounded-full flex items-center justify-center text-white shadow-2xl shadow-accent/40 hover:scale-110 transition-transform active:scale-95 border-[8px] border-accent/20"><Mic className="w-10 h-10" /></button>
+                          <button 
+                            onClick={startRecording} 
+                            disabled={isStartingRecorder}
+                            className={`w-24 h-24 bg-accent rounded-full flex items-center justify-center text-white shadow-2xl shadow-accent/40 hover:scale-110 transition-transform active:scale-95 border-[8px] border-accent/20 ${isStartingRecorder ? 'animate-pulse opacity-80' : ''}`}
+                          >
+                            {isStartingRecorder ? <Loader2 className="w-10 h-10 animate-spin" /> : <Mic className="w-10 h-10" />}
+                          </button>
                         ) : (
                           <button onClick={stopRecording} className="w-24 h-24 bg-red-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-red-500/40 hover:scale-110 transition-transform active:scale-95 border-[8px] border-red-500/20"><Square className="w-10 h-10 fill-current" /></button>
                         )}
-                        <p className="text-sm font-bold tracking-widest uppercase text-text-secondary">{isRecording ? "Đang ghi âm câu trả lời..." : transcript ? "Ghi âm hoàn tất" : "Nhấn để trả lời"}</p>
+                        <p className="text-sm font-bold tracking-widest uppercase text-text-secondary">
+                          {isStartingRecorder ? "Đang kết nối micro..." : isRecording ? "Đang ghi âm câu trả lời..." : transcript ? "Ghi âm hoàn tất" : "Nhấn để trả lời"}
+                        </p>
                       </div>
 
                       {!isRecording && (
@@ -915,11 +951,19 @@ export default function App() {
                           )}
                           <div className="flex flex-col items-center gap-4">
                             {!isRecording ? (
-                              <button onClick={startRecording} className="w-20 h-20 bg-accent rounded-full flex items-center justify-center text-white shadow-xl shadow-accent/40 hover:scale-110 transition-transform active:scale-95 border-[6px] border-accent/20"><Mic className="w-8 h-8" /></button>
+                              <button 
+                                onClick={startRecording} 
+                                disabled={isStartingRecorder}
+                                className={`w-20 h-20 bg-accent rounded-full flex items-center justify-center text-white shadow-xl shadow-accent/40 hover:scale-110 transition-transform active:scale-95 border-[6px] border-accent/20 ${isStartingRecorder ? 'animate-pulse opacity-80' : ''}`}
+                              >
+                                {isStartingRecorder ? <Loader2 className="w-8 h-8 animate-spin" /> : <Mic className="w-8 h-8" />}
+                              </button>
                             ) : (
                               <button onClick={stopRecording} className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-red-500/40 hover:scale-110 transition-transform active:scale-95 border-[6px] border-red-500/20"><Square className="w-8 h-8 fill-current" /></button>
                             )}
-                            <p className="text-xs font-bold tracking-widest uppercase text-text-secondary">{isRecording ? "Đang ghi âm..." : "Bấm để bắt đầu đọc"}</p>
+                            <p className="text-xs font-bold tracking-widest uppercase text-text-secondary">
+                              {isStartingRecorder ? "Đang kết nối..." : isRecording ? "Đang ghi âm..." : "Bấm để bắt đầu đọc"}
+                            </p>
                           </div>
 
                           {transcript && !isRecording && (
