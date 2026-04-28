@@ -838,6 +838,26 @@ export default function App() {
                       <h4 className="font-bold text-accent uppercase text-xs tracking-[0.2em]">Nhận xét chung</h4>
                       <div className="prose prose-sm max-w-none"><ReactMarkdown>{evaluation.feedback.general}</ReactMarkdown></div>
                     </div>
+
+                    {evaluation.transcriptionCorrections && Object.keys(evaluation.transcriptionCorrections).length > 0 && (
+                      <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl p-6 space-y-4 text-left">
+                        <div className="flex items-center gap-2 text-orange-600 font-extrabold uppercase text-xs tracking-widest">
+                          <Sparkles className="w-4 h-4" /> Hiệu chỉnh bản dịch (AI Correction)
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                          {Object.entries(evaluation.transcriptionCorrections).map(([orig, corr], i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs">
+                              <span className="line-through text-text-secondary decoration-red-500/50">{orig}</span>
+                              <ChevronRight className="w-3 h-3 text-text-secondary" />
+                              <span className="font-bold text-text-primary px-2 py-0.5 bg-orange-500/10 rounded border border-orange-500/10">{corr}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-[10px] text-orange-600/70 italic leading-relaxed">
+                          Hệ thống đã tự động nhận diện và hiệu chỉnh các lỗi nhận diện từ vựng (v.d: "glasses" → "classes") dựa trên ngữ cảnh IELTS của bạn để đảm bảo điểm số công bằng nhất.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

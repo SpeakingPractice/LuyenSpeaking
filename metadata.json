@@ -1,6 +1,6 @@
 {
   "name": "IELTS Speaking Master",
-  "description": "A comprehensive IELTS Speaking practice app with AI-powered evaluation. Supports user-provided Gemini API keys for personal practice and deployment.",
+  "description": "An AI-powered IELTS Speaking examiner assistant. Evaluates spoken responses with intelligent transcription correction and detailed score breakdowns based on official IELTS criteria.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["audio_recording", "ai_evaluation"]
 }

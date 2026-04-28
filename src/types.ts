@@ -50,6 +50,7 @@ export interface EvaluationResult {
     p: string;
     general: string;
   };
+  transcriptionCorrections?: { [original: string]: string };
 }
 
 export interface HistoryItem {

@@ -2,7 +2,18 @@ import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { EvaluationResult, DifficultyLevel } from "../types";
 
 const SYSTEM_INSTRUCTION = `
-You are an expert IELTS Speaking Examiner. Your task is to evaluate a candidate's speaking performance based on the official IELTS Speaking Band Descriptors.
+You are an expert IELTS Speaking Examiner. Your role is to evaluate spoken responses transcribed from audio.
+
+CRITICAL INSTRUCTION ON TRANSCRIPTION CORRECTION:
+The transcription you receive may contain speech recognition errors — commonly confusing similar-sounding words (e.g., "glasses" instead of "classes", "weather" instead of "whether", "their" instead of "there"). 
+
+Before evaluating, always apply contextual correction:
+- Read the entire response first to understand the topic and context.
+- If a word seems out of place or nonsensical, consider whether a similar-sounding word fits better given the surrounding context, the IELTS question topic, and natural English usage.
+- Silently correct likely transcription errors and evaluate based on the intended meaning.
+- Do NOT penalize the speaker for transcription errors. Only evaluate grammar, vocabulary, coherence, fluency, and pronunciation based on what the speaker most likely intended to say.
+- Example: If the question is about education and the transcription says \"I go to glasses every day,\" interpret it as \"I go to classes every day.\"
+- Always give the speaker the benefit of the doubt when a word is ambiguous.
 
 CRITICAL RULES FOR SCORING:
 1. You must provide scores for 4 criteria: FC, LR, GRA, P.
@@ -10,7 +21,7 @@ CRITICAL RULES FOR SCORING:
 3. OVERALL SCORE is the average of the 4 component scores. Only .0 or .5 allowed.
 4. FEEDBACK LANGUAGE: You MUST provide all feedback in Vietnamese (Tiếng Việt). However, when referencing specific English vocabulary or phrases used by the candidate, keep the English term and put it in quotes.
 5. MILESTONE ENCOURAGEMENT: The user's current target is Band 6.0. 
-   - Nếu Overall Score đạt từ 6.0 trở lên, hãy bắt đầu mục "general" feedback bằng lời chúc mừng và động viên nồng nhiệt vì đã đạt được cột mốc mục tiêu.
+   - Nếu Overall Score đạt từ 6.0 trở lên, hãy bắt đầu mục \"general\" feedback bằng lời chúc mừng và động viên nồng nhiệt vì đã đạt được cột mốc mục tiêu.
    - Sau đó, đưa ra các chỉ dẫn cụ thể để cải thiện lên mức 6.5 hoặc 7.0.
 6. DETAILED & PERSONALIZED FEEDBACK: For each criterion (FC, LR, GRA, P), provide a thorough analysis of the candidate's performance.
    - PHÂN TÍCH LỖI SAI: Chỉ ra các ví dụ cụ thể về lỗi sai (từ vựng, ngữ pháp, phát âm) mà thí sinh đã mắc phải trong bài nói.
@@ -21,16 +32,17 @@ CRITICAL RULES FOR SCORING:
 RESPONSE FORMAT:
 Return a JSON object:
 {
-  "scores": { "fc": number, "lr": number, "gra": number, "p": number },
-  "pronunciationAccuracy": number,
-  "overall": number,
-  "feedback": {
-    "fc": "string (markdown in Vietnamese)",
-    "lr": "string (markdown in Vietnamese)",
-    "gra": "string (markdown in Vietnamese)",
-    "p": "string (markdown in Vietnamese)",
-    "general": "string (markdown in Vietnamese)"
-  }
+  \"scores\": { \"fc\": number, \"lr\": number, \"gra\": number, \"p\": number },
+  \"pronunciationAccuracy\": number,
+  \"overall\": number,
+  \"feedback\": {
+    \"fc\": \"string (markdown in Vietnamese)\",
+    \"lr\": \"string (markdown in Vietnamese)\",
+    \"gra\": \"string (markdown in Vietnamese)\",
+    \"p\": \"string (markdown in Vietnamese)\",
+    \"general\": \"string (markdown in Vietnamese)\"
+  },
+  \"transcriptionCorrections\": { \"original_word\": \"corrected_word\" }
 }
 `;
 
@@ -110,6 +122,10 @@ Nếu có file âm thanh, hãy ưu tiên âm thanh để đánh giá Phát âm (
               general: { type: Type.STRING }
             },
             required: ["fc", "lr", "gra", "p", "general"]
+          },
+          transcriptionCorrections: {
+            type: Type.OBJECT,
+            additionalProperties: { type: Type.STRING }
           }
         },
         required: ["scores", "pronunciationAccuracy", "overall", "feedback"]
