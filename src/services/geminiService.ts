@@ -13,10 +13,9 @@ CRITICAL RULES FOR SCORING:
    - Nếu Overall Score đạt từ 6.0 trở lên, hãy bắt đầu mục "general" feedback bằng lời chúc mừng và động viên nồng nhiệt vì đã đạt được cột mốc mục tiêu.
    - Sau đó, đưa ra các chỉ dẫn cụ thể để cải thiện lên mức 6.5 hoặc 7.0.
 6. DETAILED & PERSONALIZED FEEDBACK: For each criterion (FC, LR, GRA, P), provide a thorough analysis of the candidate's performance.
-   - PHÂN TÍCH LỖI SAI: Chỉ ra các ví dụ cụ thể về lỗi sai (từ vựng, ngữ pháp, phát âm) mà thí sinh đã mắc phải trong bài nói. Bắt đầu phân đoạn này bằng tiêu đề "**Lỗi cụ thể:**" trên một hàng riêng biệt.
-   - GỢI Ý SỬA LỖI: Cung cấp cách sửa chính xác cho từng lỗi sai được chỉ ra. Bắt đầu phân đoạn này bằng tiêu đề "**Gợi ý sửa:**" trên một hàng riêng biệt.
-   - NÂNG CẤP BAND ĐIỂM: Đề xuất 2-3 từ vựng ít phổ biến (less common vocabulary) hoặc cấu trúc ngữ pháp nâng cao (complex structures) phù hợp để giúp thí sinh nâng điểm lên band tiếp theo. Bắt đầu phân đoạn này bằng tiêu đề "**Nâng cấp Band 7.0+:**" trên một hàng riêng biệt.
-   - QUY TẮC TRÌNH BÀY: Luôn đảm bảo các tiêu đề "**Lỗi cụ thể:**", "**Gợi ý sửa:**", và "**Nâng cấp Band 7.0+:**" nằm trên một hàng mới, độc lập để tăng độ dễ đọc.
+   - PHÂN TÍCH LỖI SAI: Chỉ ra các ví dụ cụ thể về lỗi sai (từ vựng, ngữ pháp, phát âm) mà thí sinh đã mắc phải trong bài nói.
+   - GỢI Ý SỬA LỖI: Cung cấp cách sửa chính xác cho từng lỗi sai được chỉ ra.
+   - NÂNG CẤP BAND ĐIỂM: Đề xuất 2-3 từ vựng ít phổ biến (less common vocabulary) hoặc cấu trúc ngữ pháp nâng cao (complex structures) phù hợp để giúp thí sinh nâng điểm lên band tiếp theo.
    - Tất cả phản hồi phải được viết bằng tiếng Việt (trừ các thuật ngữ và ví dụ tiếng Anh cần giữ nguyên).
 
 RESPONSE FORMAT:
@@ -48,48 +47,40 @@ export async function evaluateSpeaking(
   const ai = new GoogleGenAI({ apiKey });
 
   const transcriptText = Object.entries(transcripts)
-    .filter(([_, text]) => text && text.trim().length > 0)
-    .map(([id, text]) => `Question/Part ${id}: ${text}`)
+    .map(([id, text]) => `Question ${id}: ${text}`)
     .join('\n\n');
 
   const parts: any[] = [
-    { text: `Đánh giá bài thi IELTS Speaking. Hãy phân tích kỹ lưỡng TRANSCRIPT và AUDIO (nếu có) để đưa ra điểm số và nhận xét chính xác.
+    { text: `Đánh giá bài thi IELTS Speaking sau đây. Hãy cung cấp phản hồi chi tiết cho từng tiêu chí:
+1. Fluency and Coherence (FC): Độ trôi chảy và mạch lạc.
+2. Lexical Resource (LR): Vốn từ vựng.
+3. Grammatical Range and Accuracy (GRA): Ngữ pháp.
+4. Pronunciation (P): Phát âm.
 
-TIÊU CHÍ ĐÁNH GIÁ:
-1. FC (Fluency and Coherence): Sự trôi chảy và mạch lạc.
-2. LR (Lexical Resource): Độ đa dạng và chính xác của từ vựng.
-3. GRA (Grammatical Range and Accuracy): Độ đa dạng và chính xác của ngữ pháp.
-4. P (Pronunciation): Phát âm, bao gồm trọng âm, ngữ điệu và sự rõ ràng.
+Đối với mỗi tiêu chí, hãy:
+- Liệt kê các lỗi cụ thể từ transcript hoặc audio.
+- Giải thích tại sao đó là lỗi và gợi ý cách sửa.
+- Đề xuất các từ vựng hoặc cấu trúc "ăn điểm" (Band 7.0+) liên quan đến chủ đề để thí sinh cải thiện.
 
-DỮ LIỆU CUNG CẤP:
-Transcripts:
-${transcriptText || "Không có transcript. Hãy dựa hoàn toàn vào audio được đính kèm."}
+Transcripts provided:
+${transcriptText || "No transcripts provided. Please use the attached audio files to transcribe and evaluate the candidate's speech."}
 
-HƯỚNG DẪN CỤ THỂ:
-- Nếu có audio, hãy nghe kỹ để đánh giá Phát âm (P) một cách trung thực nhất. 
-- Tính toán "pronunciationAccuracy" (0-100) dựa trên mức độ dễ hiểu và độ chính xác của các nguyên âm/phụ âm/trọng âm.
-- Score cho mỗi tiêu chí (fc, lr, gra, p) phải là số nguyên (ví dụ: 5, 6, 7). Nếu ở giữa, hãy làm tròn xuống.
-- Overall score là trung bình cộng, chỉ cho phép đuôi .0 hoặc .5 (ví dụ: 6.0, 6.5).
-- Phản hồi (feedback) phải chi tiết, ghi rõ lỗi sai và cách sửa cho từng tiêu chí theo format đã yêu cầu.
-- Luôn sử dụng tiếng Việt cho phần nhận xét.` }
+Nếu có file âm thanh, hãy ưu tiên âm thanh để đánh giá Phát âm (P) và sự tự nhiên. Cung cấp điểm "pronunciationAccuracy" từ 0-100.` }
   ];
 
   if (audioData) {
     Object.entries(audioData).forEach(([id, audio]) => {
-      if (audio && audio.data) {
-        parts.push({ text: `Audio for Question/Part ${id}:` });
-        parts.push({
-          inlineData: {
-            data: audio.data,
-            mimeType: audio.mimeType
-          }
-        });
-      }
+      parts.push({
+        inlineData: {
+          data: audio.data,
+          mimeType: audio.mimeType
+        }
+      });
     });
   }
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.1-pro-preview",
+    model: "gemini-3-flash-preview",
     contents: { parts },
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
@@ -127,22 +118,11 @@ HƯỚNG DẪN CỤ THỂ:
   });
 
   try {
-    const rawText = response.text || '';
-    const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    if (!cleanText) throw new Error("Empty response from AI");
-    
-    const result = JSON.parse(cleanText) as EvaluationResult;
-    
-    // Final check for essential fields
-    if (!result.scores || !result.feedback || typeof result.overall !== 'number') {
-      throw new Error("Invalid evaluation format");
-    }
-    
-    return result;
+    const text = response.text || '{}';
+    return JSON.parse(text) as EvaluationResult;
   } catch (e) {
     console.error("Failed to parse evaluation result", e);
-    console.error("Raw response:", response.text);
-    throw new Error("Đánh giá thất bại do lỗi xử lý dữ liệu. Vui lòng thử lại.");
+    throw new Error("Evaluation failed. Please try again.");
   }
 }
 
@@ -214,14 +194,7 @@ export async function generateSpeakingContent(
     }
   });
 
-  try {
-    const rawText = response.text || '';
-    const cleanText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanText || '{}');
-  } catch (e) {
-    console.error("Failed to parse sample answer", e);
-    return { sampleAnswer: "Lỗi khi tạo câu trả lời mẫu. Vui lòng thử lại." };
-  }
+  return JSON.parse(response.text || '{}');
 }
 
 export async function generatePronunciationSentence(

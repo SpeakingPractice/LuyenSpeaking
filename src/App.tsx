@@ -74,7 +74,6 @@ export default function App() {
   const [audioData, setAudioData] = useState<Record<string, { data: string, mimeType: string }>>({});
   const [isSampleExpanded, setIsSampleExpanded] = useState(false);
   const [isTipsExpanded, setIsTipsExpanded] = useState(false);
-  const [isStartingRecorder, setIsStartingRecorder] = useState(false);
   const [p3UsageStats, setP3UsageStats] = useState<Record<string, number>>(() => {
     const saved = localStorage.getItem('p3_usage_stats');
     return saved ? JSON.parse(saved) : {};
@@ -254,16 +253,7 @@ export default function App() {
   };
 
   const startRecording = async () => {
-    setTranscript('');
-    setTimer(0);
-    setMicLevel(0);
-    setIsStartingRecorder(true);
-    
     try {
-      // Use a slightly more progressive approach:
-      // We don't set isRecording=true yet because that shows the 'Stop' button.
-      // But we can show that we are starting.
-      
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -282,7 +272,7 @@ export default function App() {
         if (!analyserRef.current) return;
         analyserRef.current.getByteFrequencyData(dataArray);
         const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        setMicLevel(average || 0);
+        setMicLevel(average);
         if (mediaRecorderRef.current?.state === 'recording') {
           requestAnimationFrame(updateLevel);
         }
@@ -298,36 +288,18 @@ export default function App() {
         } else if (view === 'pronunciation') {
           setAudioData(prev => ({ ...prev, "p": { data: base64, mimeType: 'audio/webm' } }));
         }
-        if (audioContextRef.current) {
-          audioContextRef.current.close().catch(console.error);
-        }
+        if (audioContextRef.current) audioContextRef.current.close();
         setMicLevel(0);
       };
 
       mediaRecorder.start();
-      
-      // Crucial: Resume audio context for some browsers
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
-      }
-
-      setIsRecording(true);
       updateLevel();
-
-      // Start recognition asynchronously to not block the main UI update
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.start();
-        } catch (e) {
-          console.warn("Speech recognition already started or failed to start", e);
-          // If it fails, we still have the binary recording (MediaRecorder) as backup
-        }
-      }
+      setIsRecording(true);
+      setTranscript('');
+      setTimer(0);
+      if (recognitionRef.current) recognitionRef.current.start();
     } catch (err) {
-      console.error(err);
-      alert("Không thể khởi động micro. Vui lòng kiểm tra quyền truy cập.");
-    } finally {
-      setIsStartingRecorder(false);
+      alert("Vui lòng cho phép quyền truy cập micro.");
     }
   };
 
@@ -401,20 +373,20 @@ export default function App() {
   const evaluateLevel = async () => {
     if (!session || !userApiKey || isLevelLoading) return;
     const currentQ = session.questions[session.currentQuestionIndex];
-    if (!audioData[currentQ.id]) {
+    if (!audioData[currentQ.id] || !transcript) {
       alert("Vui lòng ghi âm câu trả lời trước.");
       return;
     }
     setIsLevelLoading(true);
     try {
-      const result = await evaluateSpeaking({ [currentQ.id]: transcript || "" }, { [currentQ.id]: audioData[currentQ.id] }, userApiKey);
+      const result = await evaluateSpeaking({ [currentQ.id]: transcript }, { [currentQ.id]: audioData[currentQ.id] }, userApiKey);
       setLevelEvaluation(result);
       if (result.pronunciationAccuracy >= 80) {
         let pts = currentQ.part === 1 ? 2 : (currentQ.part === 2 ? 3 : 5);
         setTotalScore(prev => prev + pts);
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Lỗi khi đánh giá bài thi.");
+      alert("Lỗi khi đánh giá ải.");
     } finally {
       setIsLevelLoading(false);
     }
@@ -422,19 +394,22 @@ export default function App() {
 
   const evaluatePronunciation = async () => {
     if (!userApiKey || isLevelLoading || !currentPronunciationVocab || !currentPronunciationSentence) return;
-    // For pronunciation practice, we use "p" as key
-    const audio = audioData["p"]; 
-    if (!audio) {
-      alert("Vui lòng ghi âm phát âm trước.");
+    if (!transcript) {
+      alert("Vui lòng ghi âm trước.");
       return;
     }
     
+    // We need some audio data. The current currentPronunciationSentence is evaluated.
+    // However, the audioData is keyed by question id. 
+    // For pronunciation practice, we can use a fixed key.
+    const audio = audioData["p"]; 
+    
     setIsLevelLoading(true);
     try {
-      const result = await evaluateSpeaking({ "p": transcript || "" }, { "p": audio }, userApiKey);
+      const result = await evaluateSpeaking({ "p": transcript }, audio ? { "p": audio } : undefined, userApiKey);
       setLevelEvaluation(result);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Lỗi khi đánh giá phát âm.");
+      alert("Lỗi khi đánh giá phát âm.");
     } finally {
       setIsLevelLoading(false);
     }
@@ -464,7 +439,7 @@ export default function App() {
       setView('result');
     } catch (err) {
       setView('test');
-      alert(err instanceof Error ? err.message : "Đánh giá thất bại. Vui lòng thử lại.");
+      alert("Đánh giá thất bại.");
     }
   };
 
@@ -525,15 +500,6 @@ export default function App() {
         })}
       </>
     );
-  };
-
-  const formatFeedback = (text: string) => {
-    if (!text) return '';
-    return text
-      .replace(/\n*(\*\*Lỗi cụ thể:\*\*)/g, '\n\n$1')
-      .replace(/\n*(\*\*Gợi ý sửa:\*\*)/g, '\n\n$1')
-      .replace(/\n*(\*\*Nâng cấp Band 7\.0\+:\*\*)/g, '\n\n$1')
-      .trim();
   };
 
   const currentQuestion = session?.questions[session.currentQuestionIndex];
@@ -776,59 +742,21 @@ export default function App() {
                       </div>
                       <div className="flex flex-col items-center gap-4">
                         {!isRecording ? (
-                          <button 
-                            onClick={startRecording} 
-                            disabled={isStartingRecorder}
-                            className={`w-24 h-24 bg-accent rounded-full flex items-center justify-center text-white shadow-2xl shadow-accent/40 hover:scale-110 transition-transform active:scale-95 border-[8px] border-accent/20 ${isStartingRecorder ? 'animate-pulse opacity-80' : ''}`}
-                          >
-                            {isStartingRecorder ? <Loader2 className="w-10 h-10 animate-spin" /> : <Mic className="w-10 h-10" />}
-                          </button>
+                          <button onClick={startRecording} className="w-24 h-24 bg-accent rounded-full flex items-center justify-center text-white shadow-2xl shadow-accent/40 hover:scale-110 transition-transform active:scale-95 border-[8px] border-accent/20"><Mic className="w-10 h-10" /></button>
                         ) : (
                           <button onClick={stopRecording} className="w-24 h-24 bg-red-500 rounded-full flex items-center justify-center text-white shadow-2xl shadow-red-500/40 hover:scale-110 transition-transform active:scale-95 border-[8px] border-red-500/20"><Square className="w-10 h-10 fill-current" /></button>
                         )}
-                        <p className="text-sm font-bold tracking-widest uppercase text-text-secondary">
-                          {isStartingRecorder ? "Đang kết nối micro..." : isRecording ? "Đang ghi âm câu trả lời..." : transcript ? "Ghi âm hoàn tất" : "Nhấn để trả lời"}
-                        </p>
+                        <p className="text-sm font-bold tracking-widest uppercase text-text-secondary">{isRecording ? "Đang ghi âm câu trả lời..." : transcript ? "Ghi âm hoàn tất" : "Nhấn để trả lời"}</p>
                       </div>
-
-                      {!isRecording && (
-                        <div className="w-full max-w-2xl space-y-6">
-                          {transcript && (
-                            <div className="bg-bg/50 p-8 rounded-3xl border border-border text-left">
-                              <p className="text-lg text-text-primary italic leading-relaxed">"{transcript}"</p>
-                            </div>
-                          )}
-                          
-                          <div className="flex flex-col sm:flex-row gap-4">
-                            {session.mode === TestPart.QUEST ? (
-                              <button 
-                                onClick={evaluateLevel} 
-                                disabled={isLevelLoading || !audioData[session.questions[session.currentQuestionIndex].id]} 
-                                className="flex-[3] py-5 bg-text-primary text-bg font-black rounded-2xl flex items-center justify-center gap-3 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity shadow-lg"
-                              >
-                                {isLevelLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Award className="w-6 h-6" /> KIỂM TRA ĐỘ CHÍNH XÁC</>}
-                              </button>
-                            ) : (
-                              <button onClick={nextQuestion} className="flex-[3] py-5 bg-text-primary text-bg font-black rounded-2xl flex items-center justify-center gap-3 shadow-lg hover:shadow-text-primary/10 transition-all">
-                                {session.currentQuestionIndex + 1 === session.questions.length ? "HOÀN TẤT" : "TIẾP TỤC"} 
-                                <ChevronRight className="w-6 h-6" />
-                              </button>
-                            )}
-                            
-                            <button onClick={nextQuestion} className="flex-1 py-5 bg-card border border-border text-text-secondary font-bold rounded-2xl hover:bg-white/5 transition-colors">
-                              {session.mode === TestPart.QUEST ? "BỎ QUA" : "SKIP"}
+                      {transcript && !isRecording && (
+                        <div className="w-full max-w-2xl bg-bg/50 p-8 rounded-3xl border border-border text-left space-y-4">
+                          <p className="text-lg text-text-primary italic leading-relaxed">"{transcript}"</p>
+                          {session.mode === TestPart.QUEST ? (
+                            <button onClick={evaluateLevel} disabled={isLevelLoading} className="w-full py-5 bg-text-primary text-bg font-black rounded-2xl flex items-center justify-center gap-3">
+                              {isLevelLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <><Award className="w-6 h-6" /> KIỂM TRA ĐỘ CHÍNH XÁC (TGT 80%)</>}
                             </button>
-                          </div>
-                          
-                          {!transcript && !isRecording && timer > 0 && !audioData[session.questions[session.currentQuestionIndex].id] && (
-                            <p className="text-xs font-bold text-red-400 bg-red-400/5 py-3 px-4 rounded-xl border border-red-400/20 uppercase tracking-widest text-center">
-                              ⚠️ Không nhận diện được âm thanh. Hãy thử lại hoặc bấm "BỎ QUA".
-                            </p>
-                          )}
-                          {!transcript && !isRecording && timer > 0 && audioData[session.questions[session.currentQuestionIndex].id] && (
-                            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest text-center opacity-60">
-                              (Đã ghi âm thành công, nhưng trình duyệt không hiển thị được văn bản bản dịch)
-                            </p>
+                          ) : (
+                            <button onClick={nextQuestion} className="w-full py-5 bg-text-primary text-bg font-black rounded-2xl flex items-center justify-center gap-3">TIẾP TỤC <ChevronRight className="w-6 h-6" /></button>
                           )}
                         </div>
                       )}
@@ -895,10 +823,10 @@ export default function App() {
                   <div className="flex items-center justify-between"><h2 className="text-3xl font-black">Phân tích chi tiết</h2><button onClick={resetToHome} className="px-5 py-2.5 bg-white/5 border border-border text-text-primary font-bold rounded-xl flex items-center gap-2 text-sm"><RotateCcw className="w-4 h-4" /> Reset</button></div>
                   <div className="space-y-10">
                     {[
-                      { label: 'Trôi chảy & Mạch lạc', content: formatFeedback(evaluation.feedback.fc), score: evaluation.scores.fc },
-                      { label: 'Vốn từ vựng', content: formatFeedback(evaluation.feedback.lr), score: evaluation.scores.lr },
-                      { label: 'Ngữ pháp chính xác', content: formatFeedback(evaluation.feedback.gra), score: evaluation.scores.gra },
-                      { label: 'Phát âm', content: formatFeedback(evaluation.feedback.p), score: evaluation.scores.p },
+                      { label: 'Trôi chảy & Mạch lạc', content: evaluation.feedback.fc, score: evaluation.scores.fc },
+                      { label: 'Vốn từ vựng', content: evaluation.feedback.lr, score: evaluation.scores.lr },
+                      { label: 'Ngữ pháp chính xác', content: evaluation.feedback.gra, score: evaluation.scores.gra },
+                      { label: 'Phát âm', content: evaluation.feedback.p, score: evaluation.scores.p },
                     ].map((item, i) => (
                       <div key={i} className="space-y-4 text-left">
                         <div className="flex items-center justify-between"><h4 className="font-bold text-accent uppercase text-xs tracking-[0.2em]">{item.label}</h4><span className="text-success font-bold">Band {item.score}</span></div>
@@ -908,7 +836,7 @@ export default function App() {
                     ))}
                     <div className="space-y-4 text-left">
                       <h4 className="font-bold text-accent uppercase text-xs tracking-[0.2em]">Nhận xét chung</h4>
-                      <div className="prose prose-sm max-w-none"><ReactMarkdown>{formatFeedback(evaluation.feedback.general)}</ReactMarkdown></div>
+                      <div className="prose prose-sm max-w-none"><ReactMarkdown>{evaluation.feedback.general}</ReactMarkdown></div>
                     </div>
                   </div>
                 </div>
@@ -962,25 +890,17 @@ export default function App() {
                           )}
                           <div className="flex flex-col items-center gap-4">
                             {!isRecording ? (
-                              <button 
-                                onClick={startRecording} 
-                                disabled={isStartingRecorder}
-                                className={`w-20 h-20 bg-accent rounded-full flex items-center justify-center text-white shadow-xl shadow-accent/40 hover:scale-110 transition-transform active:scale-95 border-[6px] border-accent/20 ${isStartingRecorder ? 'animate-pulse opacity-80' : ''}`}
-                              >
-                                {isStartingRecorder ? <Loader2 className="w-8 h-8 animate-spin" /> : <Mic className="w-8 h-8" />}
-                              </button>
+                              <button onClick={startRecording} className="w-20 h-20 bg-accent rounded-full flex items-center justify-center text-white shadow-xl shadow-accent/40 hover:scale-110 transition-transform active:scale-95 border-[6px] border-accent/20"><Mic className="w-8 h-8" /></button>
                             ) : (
                               <button onClick={stopRecording} className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-red-500/40 hover:scale-110 transition-transform active:scale-95 border-[6px] border-red-500/20"><Square className="w-8 h-8 fill-current" /></button>
                             )}
-                            <p className="text-xs font-bold tracking-widest uppercase text-text-secondary">
-                              {isStartingRecorder ? "Đang kết nối..." : isRecording ? "Đang ghi âm..." : "Bấm để bắt đầu đọc"}
-                            </p>
+                            <p className="text-xs font-bold tracking-widest uppercase text-text-secondary">{isRecording ? "Đang ghi âm..." : "Bấm để bắt đầu đọc"}</p>
                           </div>
 
-                          {(transcript || audioData["p"]) && !isRecording && (
+                          {transcript && !isRecording && (
                             <div className="w-full bg-card p-6 rounded-2xl border border-border text-left">
                               <p className="text-sm font-bold text-text-secondary uppercase mb-2">Bạn đã đọc:</p>
-                              <p className="text-lg text-text-primary italic">"{transcript || "(Không trích xuất được văn bản, nhưng đã nhận diện được âm thanh)"}"</p>
+                              <p className="text-lg text-text-primary italic">"{transcript}"</p>
                               <button onClick={evaluatePronunciation} disabled={isLevelLoading} className="w-full mt-6 py-4 bg-text-primary text-bg font-black rounded-xl flex items-center justify-center gap-3">
                                 {isLevelLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Award className="w-5 h-5" /> KIỂM TRA ĐỘ CHÍNH XÁC (MỤC TIÊU 80%)</>}
                               </button>
